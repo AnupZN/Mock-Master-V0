@@ -21,11 +21,13 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { Question, ExamSession, Bookmark as BookmarkType } from "../types";
 import { formatTime } from "../utils";
+import { getThemeStyles } from "../utils/theme";
 
 interface ExamViewProps {
   session: ExamSession;
   bookmarks: BookmarkType[];
   isDarkMode: boolean;
+  theme?: string;
   onToggleDarkMode: () => void;
   onToggleBookmark: (questionId: number) => void;
   onSubmitExam: (answers: Record<number, number | null>, elapsedSeconds: number) => void;
@@ -36,11 +38,13 @@ export default function ExamView({
   session,
   bookmarks,
   isDarkMode,
+  theme,
   onToggleDarkMode,
   onToggleBookmark,
   onSubmitExam,
   onExitExam,
 }: ExamViewProps) {
+  const themeClass = useMemo(() => getThemeStyles(theme), [theme]);
   const { questions, subjectName, chapterTitle, subjectId, chapterId, isPracticeMode } = session;
   
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -318,7 +322,7 @@ export default function ExamView({
       {/* SSC Top Header Bar */}
       <header className="flex items-center justify-between px-2 sm:px-6 py-2.5 sm:py-3 bg-slate-800 text-white shrink-0 shadow-md select-none rounded-t-xl md:rounded-t-3xl">
         <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
-          <div className="hidden sm:block bg-indigo-600 p-1.5 rounded-lg text-white font-black text-xs sm:text-sm shrink-0">SSC</div>
+          <div className={`hidden sm:block ${themeClass.primaryBg} p-1.5 rounded-lg text-white font-black text-xs sm:text-sm shrink-0`}>SSC</div>
           <div className="min-w-0">
             <h1 className="font-bold text-xs sm:text-sm tracking-tight leading-tight truncate max-w-[80px] xs:max-w-[120px] sm:max-w-[200px] md:max-w-xs lg:max-w-none" title={isPracticeMode ? "Mock Practice Portal" : chapterTitle}>
               {isPracticeMode ? "Mock Practice Portal" : chapterTitle}
@@ -404,7 +408,7 @@ export default function ExamView({
           <div className="flex-1 overflow-y-auto p-4 md:p-8 flex items-center justify-center bg-slate-50 dark:bg-slate-950">
             <div className="max-w-3xl w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-10 shadow-xl space-y-8 animate-in fade-in zoom-in-95 duration-200">
               <div className="flex items-center gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center shrink-0">
+                <div className={`w-12 h-12 ${themeClass.accentBg} ${themeClass.accentText} rounded-2xl flex items-center justify-center shrink-0`}>
                   <HelpCircle size={24} />
                 </div>
                 <div>
@@ -436,8 +440,8 @@ export default function ExamView({
                     </div>
                   </div>
 
-                  <div className="space-y-3 bg-indigo-50/40 dark:bg-indigo-950/10 p-4 rounded-2xl border border-indigo-100/30 dark:border-indigo-950/20 text-xs">
-                    <h4 className="font-bold text-indigo-700 dark:text-indigo-400">Marking Scheme</h4>
+                  <div className={`space-y-3 ${themeClass.lightBg} p-4 rounded-2xl border border-slate-100 dark:border-slate-800/10 text-xs`}>
+                    <h4 className={`font-bold ${themeClass.primaryText}`}>Marking Scheme</h4>
                     <ul className="space-y-1.5 list-disc list-inside text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                       <li><span className="text-emerald-600 dark:text-emerald-400 font-bold">+2.00 Marks</span> for each correct response</li>
                       <li><span className="text-rose-600 dark:text-rose-400 font-bold">-0.50 Marks</span> for each wrong response</li>
@@ -456,7 +460,7 @@ export default function ExamView({
                         onClick={() => setLanguage("en")}
                         className={`py-3 px-4 rounded-xl border font-bold text-xs transition cursor-pointer text-center ${
                           language === "en"
-                            ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                            ? `${themeClass.primaryBg} border-transparent text-white shadow-lg ${themeClass.shadowMd}`
                             : "bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
                         }`}
                       >
@@ -467,7 +471,7 @@ export default function ExamView({
                         onClick={() => setLanguage("hi")}
                         className={`py-3 px-4 rounded-xl border font-bold text-xs transition cursor-pointer text-center ${
                           language === "hi"
-                            ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                            ? `${themeClass.primaryBg} border-transparent text-white shadow-lg ${themeClass.shadowMd}`
                             : "bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
                         }`}
                       >
@@ -510,7 +514,7 @@ export default function ExamView({
                 </button>
                 <button
                   onClick={() => setShowPreTestPanel(false)}
-                  className="w-full sm:flex-1 py-3.5 px-8 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-500/10 cursor-pointer transition text-center"
+                  className={`w-full sm:flex-1 py-3.5 px-8 ${themeClass.primaryBg} ${themeClass.primaryHoverBg} text-white font-bold text-xs rounded-xl shadow-lg ${themeClass.shadowMd} cursor-pointer transition text-center`}
                   id="pretest-start-btn"
                 >
                   I am ready to begin the test
@@ -526,7 +530,7 @@ export default function ExamView({
                 {/* Question Subheader Info */}
                 <div className="flex items-center justify-between text-xs text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 py-1 px-3 rounded-lg font-bold">
+                    <span className={`font-mono ${themeClass.lightBg} ${themeClass.primaryText} py-1 px-3 rounded-lg font-bold`}>
                       Question {currentIndex + 1} of {questions.length}
                     </span>
                     <span className="font-medium font-mono text-slate-500">
@@ -559,13 +563,13 @@ export default function ExamView({
 
                 {/* Last Question Notice Banner */}
                 {currentIndex === questions.length - 1 && (
-                  <div className="flex items-start gap-3 p-3.5 bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100/80 dark:border-indigo-900/40 rounded-2xl animate-fade-in" id="last-question-banner">
-                    <Info size={16} className="text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" />
+                  <div className={`flex items-start gap-3 p-3.5 ${themeClass.lightBg} border border-slate-150 dark:border-slate-800/60 rounded-2xl animate-fade-in`} id="last-question-banner">
+                    <Info size={16} className={`${themeClass.primaryText} mt-0.5 shrink-0`} />
                     <div className="space-y-0.5">
-                      <p className="text-[11px] font-black text-indigo-800 dark:text-indigo-300 uppercase tracking-wide">
+                      <p className={`text-[11px] font-black ${themeClass.primaryText} uppercase tracking-wide`}>
                         {language === "hi" ? "आप अंतिम प्रश्न पर हैं" : "You are on the Last Question"}
                       </p>
-                      <p className="text-[10px] text-indigo-600/85 dark:text-indigo-400/80 leading-relaxed font-semibold">
+                      <p className={`text-[10px] ${themeClass.primaryText}/80 leading-relaxed font-semibold`}>
                         {language === "hi" 
                           ? "सभी प्रश्नों का उत्तर देने के बाद, दाईं ओर या नीचे स्थित 'परीक्षा सबमिट करें' बटन का उपयोग करें।" 
                           : "After answering all questions, use the 'Submit Exam' button on the right panel or at the bottom of the page to complete the exam."}
@@ -584,7 +588,7 @@ export default function ExamView({
                         onClick={() => setLanguage("en")}
                         className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all cursor-pointer ${
                           language === "en"
-                            ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold"
+                            ? `bg-white dark:bg-slate-800 ${themeClass.primaryText} shadow-sm font-bold`
                             : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                         }`}
                       >
@@ -595,7 +599,7 @@ export default function ExamView({
                         onClick={() => setLanguage("hi")}
                         className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all cursor-pointer ${
                           language === "hi"
-                            ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold"
+                            ? `bg-white dark:bg-slate-800 ${themeClass.primaryText} shadow-sm font-bold`
                             : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                         }`}
                       >
@@ -631,13 +635,19 @@ export default function ExamView({
                           onClick={() => handleSelectOption(i)}
                           className={`w-full flex items-center gap-4 p-4 rounded-2xl border text-left font-sans font-medium transition cursor-pointer outline-none ${
                             isSelected
-                              ? "bg-indigo-50/60 dark:bg-indigo-950/20 border-indigo-500 dark:border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm"
+                              ? `${themeClass.lightBg} ${
+                                  themeClass.id === "amber" ? "border-amber-500 dark:border-amber-500" :
+                                  themeClass.id === "emerald" ? "border-emerald-600 dark:border-emerald-500" :
+                                  themeClass.id === "ocean" ? "border-sky-600 dark:border-sky-500" :
+                                  themeClass.id === "rose" ? "border-rose-600 dark:border-rose-500" :
+                                  "border-indigo-600 dark:border-indigo-500"
+                                } ${themeClass.primaryText} shadow-sm`
                               : "bg-white dark:bg-slate-900/30 border-slate-200 dark:border-slate-800/50 hover:bg-slate-100/50 dark:hover:bg-slate-900/60 text-slate-600 dark:text-slate-300"
                           }`}
                         >
                           <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono text-xs font-bold transition-colors ${
                             isSelected
-                              ? "bg-indigo-600 text-white"
+                              ? `${themeClass.primaryBg} text-white`
                               : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                           }`}>
                             {label}
@@ -689,7 +699,7 @@ export default function ExamView({
                   </button>
                   <button
                     onClick={handleSaveAndNext}
-                    className="flex-1 sm:flex-none py-2.5 px-5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-sm shadow-indigo-500/10"
+                    className={`flex-1 sm:flex-none py-2.5 px-5 ${themeClass.primaryBg} hover:${themeClass.primaryHoverBg} text-white text-xs font-extrabold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-sm ${themeClass.shadowMd}`}
                   >
                     <span>Save & Next</span>
                     <ChevronRight size={14} />
@@ -702,7 +712,7 @@ export default function ExamView({
             <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shrink-0 select-none">
               {/* Candidate Bio block */}
               <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 flex items-center justify-center">
+                <div className={`w-12 h-12 rounded-2xl ${themeClass.accentBg} ${themeClass.accentText} flex items-center justify-center`}>
                   <User size={22} />
                 </div>
                 <div>
@@ -756,7 +766,7 @@ export default function ExamView({
                         key={q.id}
                         onClick={() => handleJumpToQuestion(i)}
                         className={`w-10 h-10 rounded-xl flex items-center justify-center font-mono text-xs font-black transition-all cursor-pointer ${btnBg} ${
-                          isSelected ? "ring-4 ring-indigo-600 dark:ring-indigo-500 scale-105" : ""
+                          isSelected ? `ring-4 ${themeClass.focusRing} scale-105` : ""
                         }`}
                       >
                         {i + 1}
@@ -770,7 +780,7 @@ export default function ExamView({
               <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
                 <button
                   onClick={() => setShowSubmitConfirm(true)}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition active:scale-98"
+                  className={`w-full py-3 ${themeClass.primaryBg} hover:${themeClass.primaryHoverBg} text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition active:scale-98`}
                 >
                   Submit Exam
                 </button>
@@ -806,7 +816,7 @@ export default function ExamView({
 
             {/* Mobile Bio block */}
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl ${themeClass.accentBg} ${themeClass.accentText} flex items-center justify-center`}>
                 <User size={18} />
               </div>
               <div>
@@ -859,7 +869,7 @@ export default function ExamView({
                       key={q.id}
                       onClick={() => handleJumpToQuestion(i)}
                       className={`w-9 h-9 rounded-lg flex items-center justify-center font-mono text-xs font-black transition-all cursor-pointer ${btnBg} ${
-                        isSelected ? "ring-2 ring-indigo-600 dark:ring-indigo-500 scale-105" : ""
+                        isSelected ? `ring-2 ${themeClass.focusRing} scale-105` : ""
                       }`}
                     >
                       {i + 1}
@@ -876,7 +886,7 @@ export default function ExamView({
                   setIsPaletteOpen(false);
                   setShowShortcutHelp(true);
                 }}
-                className="w-full py-2.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-indigo-600 rounded-xl transition cursor-pointer border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-1.5"
+                className={`w-full py-2.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:${themeClass.primaryText} rounded-xl transition cursor-pointer border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-1.5`}
               >
                 <Keyboard size={13} />
                 <span>Keyboard Shortcuts</span>
@@ -886,7 +896,7 @@ export default function ExamView({
                   setIsPaletteOpen(false);
                   setShowSubmitConfirm(true);
                 }}
-                className="w-full py-3 bg-indigo-600 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
+                className={`w-full py-3 ${themeClass.primaryBg} hover:${themeClass.primaryHoverBg} text-white font-bold text-xs rounded-xl shadow-md cursor-pointer`}
               >
                 Submit Exam
               </button>
@@ -909,7 +919,7 @@ export default function ExamView({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Keyboard size={20} className="text-indigo-600" />
+              <Keyboard size={20} className={themeClass.primaryText} />
               <span>Keyboard Shortcuts</span>
             </h3>
 
@@ -989,7 +999,7 @@ export default function ExamView({
                   setShowSubmitConfirm(false);
                   handleSubmit();
                 }}
-                className="py-3 px-4 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-500 cursor-pointer shadow-md shadow-indigo-500/10"
+                className={`py-3 px-4 ${themeClass.primaryBg} hover:${themeClass.primaryHoverBg} text-white font-bold text-xs rounded-xl cursor-pointer shadow-md ${themeClass.shadowMd}`}
               >
                 Confirm Submit
               </button>
@@ -1006,7 +1016,7 @@ export default function ExamView({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="fixed bottom-6 right-6 z-50 max-w-sm w-[calc(100vw-3rem)] bg-indigo-600 dark:bg-indigo-950/95 text-white p-4 rounded-2xl shadow-2xl border border-indigo-500/30 flex gap-3 animate-fade-in"
+            className={`fixed bottom-6 right-6 z-50 max-w-sm w-[calc(100vw-3rem)] ${themeClass.primaryBg} text-white p-4 rounded-2xl shadow-2xl border border-white/20 flex gap-3 animate-fade-in`}
             id="last-question-toast"
           >
             <div className="w-10 h-10 rounded-xl bg-white/10 dark:bg-white/5 flex items-center justify-center shrink-0 text-white">
@@ -1016,13 +1026,13 @@ export default function ExamView({
               <h4 className="text-xs font-black tracking-wide uppercase">
                 {language === "hi" ? lastQuestionMsg.hi.title : lastQuestionMsg.en.title}
               </h4>
-              <p className="text-[11px] text-indigo-100 dark:text-indigo-200 leading-relaxed font-medium">
+              <p className="text-[11px] text-white/85 leading-relaxed font-medium">
                 {language === "hi" ? lastQuestionMsg.hi.desc : lastQuestionMsg.en.desc}
               </p>
             </div>
             <button
               onClick={() => setShowLastQuestionToast(false)}
-              className="p-1 hover:bg-white/15 dark:hover:bg-white/10 rounded-lg h-7 w-7 flex items-center justify-center shrink-0 cursor-pointer self-start text-indigo-200 hover:text-white transition-colors"
+              className="p-1 hover:bg-white/15 dark:hover:bg-white/10 rounded-lg h-7 w-7 flex items-center justify-center shrink-0 cursor-pointer self-start text-white/70 hover:text-white transition-colors"
             >
               <X size={14} />
             </button>

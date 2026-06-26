@@ -1,0 +1,91 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "theme": { "type": "string" },
+        "isDarkMode": { "type": "boolean" },
+        "fontSize": { "type": "integer" },
+        "questionFont": { "type": "string" },
+        "dailyTarget": { "type": "integer" },
+        "userName": { "type": "string" },
+        "userTitle": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid"]
+    },
+    "AttemptHistoryItem": {
+      "title": "AttemptHistoryItem",
+      "description": "Exam attempt history item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "chapterTitle": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "score": { "type": "integer" },
+        "totalQuestions": { "type": "integer" },
+        "correctCount": { "type": "integer" },
+        "wrongCount": { "type": "integer" },
+        "skippedCount": { "type": "integer" },
+        "maxScore": { "type": "integer" },
+        "accuracy": { "type": "number" },
+        "timeTaken": { "type": "integer" },
+        "isPracticeMode": { "type": "boolean" },
+        "practiceType": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "subjectId", "chapterId", "date"]
+    },
+    "Bookmark": {
+      "title": "Bookmark",
+      "description": "Bookmarked question",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "questionId": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subjectId", "chapterId", "questionId"]
+    },
+    "WrongQuestion": {
+      "title": "WrongQuestion",
+      "description": "Incorrectly answered question stored for review",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "questionId": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subjectId", "chapterId", "questionId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stores user settings and profile details"
+    },
+    "/users/{userId}/history/{attemptId}": {
+      "schema": "AttemptHistoryItem",
+      "description": "Stores user exam attempt history"
+    },
+    "/users/{userId}/bookmarks/{bookmarkId}": {
+      "schema": "Bookmark",
+      "description": "Stores user bookmarked questions"
+    },
+    "/users/{userId}/wrongQuestions/{wrongId}": {
+      "schema": "WrongQuestion",
+      "description": "Stores user incorrectly answered questions"
+    }
+  }
+}

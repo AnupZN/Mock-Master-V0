@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Subject, AttemptHistoryItem, Bookmark as BookmarkType } from "../types";
 import { formatTime, formatDate } from "../utils";
+import { getThemeStyles } from "../utils/theme";
 
 interface DashboardViewProps {
   subjects: Subject[];
@@ -24,6 +25,7 @@ interface DashboardViewProps {
   bookmarks: BookmarkType[];
   dailyTarget: number;
   userName?: string;
+  theme?: string;
   onNavigate: (view: string, data?: any) => void;
   onStartPractice: (type: string) => void;
 }
@@ -34,9 +36,11 @@ export default function DashboardView({
   bookmarks,
   dailyTarget,
   userName,
+  theme,
   onNavigate,
   onStartPractice,
 }: DashboardViewProps) {
+  const themeClass = useMemo(() => getThemeStyles(theme), [theme]);
   // Overall stats
   const totals = useMemo(() => {
     const totalSubjects = subjects.length;
@@ -119,9 +123,9 @@ export default function DashboardView({
 
   return (
     <div className="space-y-8" id="dashboard-container">
-      {/* Top Banner (Clean Indigo/Slate Minimalism) */}
+      {/* Top Banner (Clean Dynamic Preset Theme Minimalism) */}
       <div 
-        className="relative overflow-hidden rounded-3xl bg-indigo-600 p-8 text-white flex justify-between items-center shadow-lg shadow-indigo-100 dark:shadow-none"
+        className={`relative overflow-hidden rounded-3xl ${themeClass.primaryBg} p-8 text-white flex justify-between items-center shadow-lg ${themeClass.shadowMd} dark:shadow-none`}
         id="dashboard-header-card"
       >
         <div className="absolute -right-4 -bottom-4 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
@@ -129,14 +133,14 @@ export default function DashboardView({
           <h1 className="text-3xl font-black tracking-tight font-sans">
             Welcome back, {userName || "Dr. Sarah Chen"}!
           </h1>
-          <p className="text-indigo-100 text-sm font-sans">
+          <p className="text-white/80 text-sm font-sans">
             Track your daily goals, practice chapter-wise question banks, and improve your accuracy with our modular preparation portal.
           </p>
           <div className="pt-2">
             {lastAttempt ? (
               <button
                 onClick={() => onNavigate("chapters", { subjectId: lastAttempt.subjectId })}
-                className="flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 font-bold rounded-xl text-sm shadow-xl shadow-indigo-900/20 active:scale-95 transition-transform cursor-pointer"
+                className={`flex items-center gap-2 px-6 py-3 bg-white ${themeClass.primaryText} font-bold rounded-xl text-sm shadow-xl ${themeClass.shadowLg} active:scale-95 transition-transform cursor-pointer`}
                 id="continue-practice-btn"
               >
                 <Play size={16} fill="currentColor" />
@@ -146,7 +150,7 @@ export default function DashboardView({
             ) : (
               <button
                 onClick={() => onNavigate("subjects")}
-                className="flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 font-bold rounded-xl text-sm shadow-xl shadow-indigo-900/20 active:scale-95 transition-transform cursor-pointer"
+                className={`flex items-center gap-2 px-6 py-3 bg-white ${themeClass.primaryText} font-bold rounded-xl text-sm shadow-xl ${themeClass.shadowLg} active:scale-95 transition-transform cursor-pointer`}
                 id="start-prep-btn"
               >
                 <Play size={16} fill="currentColor" />
@@ -208,7 +212,7 @@ export default function DashboardView({
         <div className="lg:col-span-5 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm flex flex-col justify-between space-y-6">
           <div className="space-y-1">
             <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <TrendingUp size={20} className="text-indigo-500" />
+              <TrendingUp size={20} className={themeClass.primaryText} />
               <span>Today's Progress</span>
             </h3>
             <p className="text-xs text-slate-400">Daily Target is set in Settings</p>
@@ -232,7 +236,17 @@ export default function DashboardView({
                   cx="50"
                   cy="50"
                   r="40"
-                  className="stroke-indigo-600 transition-all duration-1000 ease-out"
+                  className={`${
+                    themeClass.id === "amber"
+                      ? "stroke-amber-500 dark:stroke-amber-400"
+                      : themeClass.id === "emerald"
+                      ? "stroke-emerald-600 dark:stroke-emerald-500"
+                      : themeClass.id === "ocean"
+                      ? "stroke-sky-600 dark:stroke-sky-500"
+                      : themeClass.id === "rose"
+                      ? "stroke-rose-600 dark:stroke-rose-500"
+                      : "stroke-indigo-600 dark:stroke-indigo-500"
+                  } transition-all duration-1000 ease-out`}
                   strokeWidth="8"
                   fill="transparent"
                   strokeDasharray={`${2 * Math.PI * 40}`}
@@ -291,7 +305,7 @@ export default function DashboardView({
                         day.count >= dailyTarget
                           ? "bg-emerald-500 dark:bg-emerald-600"
                           : day.count > 0
-                          ? "bg-indigo-500 dark:bg-indigo-600"
+                          ? themeClass.primaryBg
                           : "bg-transparent"
                       }`}
                     ></motion.div>
@@ -321,29 +335,29 @@ export default function DashboardView({
           <div className="grid grid-cols-3 gap-3">
             <button
               onClick={() => onStartPractice("random_10")}
-              className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 hover:bg-indigo-50 hover:border-indigo-100 dark:hover:bg-indigo-950/20 rounded-2xl transition duration-150 cursor-pointer text-center"
+              className={`flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 hover:${themeClass.lightBg} hover:${themeClass.border} rounded-2xl transition duration-150 cursor-pointer text-center`}
             >
-              <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">10</span>
+              <span className={`text-2xl font-bold ${themeClass.primaryText}`}>10</span>
               <span className="text-xs font-semibold text-slate-500 mt-1">Random Qs</span>
             </button>
             <button
               onClick={() => onStartPractice("random_25")}
-              className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 hover:bg-indigo-50 hover:border-indigo-100 dark:hover:bg-indigo-950/20 rounded-2xl transition duration-150 cursor-pointer text-center"
+              className={`flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 hover:${themeClass.lightBg} hover:${themeClass.border} rounded-2xl transition duration-150 cursor-pointer text-center`}
             >
-              <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">25</span>
+              <span className={`text-2xl font-bold ${themeClass.primaryText}`}>25</span>
               <span className="text-xs font-semibold text-slate-500 mt-1">Random Qs</span>
             </button>
             <button
               onClick={() => onStartPractice("random_50")}
-              className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 hover:bg-indigo-50 hover:border-indigo-100 dark:hover:bg-indigo-950/20 rounded-2xl transition duration-150 cursor-pointer text-center"
+              className={`flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 hover:${themeClass.lightBg} hover:${themeClass.border} rounded-2xl transition duration-150 cursor-pointer text-center`}
             >
-              <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">50</span>
+              <span className={`text-2xl font-bold ${themeClass.primaryText}`}>50</span>
               <span className="text-xs font-semibold text-slate-500 mt-1">Random Qs</span>
             </button>
           </div>
           <button
             onClick={() => onStartPractice("mixed")}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold rounded-xl transition duration-150 cursor-pointer"
+            className={`w-full flex items-center justify-center gap-2 py-3 ${themeClass.lightBg} ${themeClass.lightBgHover} ${themeClass.primaryText} font-bold rounded-xl transition duration-150 cursor-pointer`}
           >
             <Shuffle size={16} />
             <span>Start Multi-Subject Mixed Quiz</span>
@@ -421,7 +435,7 @@ export default function DashboardView({
                       isExcellent 
                         ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400" 
                         : isPassing 
-                        ? "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400" 
+                        ? `${themeClass.lightBg} ${themeClass.primaryText}` 
                         : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400"
                     }`}>
                       <Award size={20} />
@@ -462,7 +476,7 @@ export default function DashboardView({
 
                     <button
                       onClick={() => onNavigate("result", { historyItem: item })}
-                      className="px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-xl transition duration-150 cursor-pointer"
+                      className={`px-4 py-2 text-xs font-bold ${themeClass.primaryText} ${themeClass.lightBg} ${themeClass.lightBgHover} rounded-xl transition duration-150 cursor-pointer`}
                     >
                       Metrics
                     </button>

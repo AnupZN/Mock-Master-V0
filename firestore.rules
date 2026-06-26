@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // User document and nested subcollections
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.uid == userId &&
+          (!('theme' in data) || (data.theme is string && data.theme.size() <= 50)) &&
+          (!('isDarkMode' in data) || data.isDarkMode is bool) &&
+          (!('fontSize' in data) || data.fontSize is int) &&
+          (!('questionFont' in data) || (data.questionFont is string && data.questionFont.size() <= 50)) &&
+          (!('dailyTarget' in data) || data.dailyTarget is int) &&
+          (!('userName' in data) || (data.userName is string && data.userName.size() <= 100)) &&
+          (!('userTitle' in data) || (data.userTitle is string && data.userTitle.size() <= 100));
+      }
+
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow delete: if isOwner(userId);
+
+      // History subcollection
+      match /history/{attemptId} {
+        function isValidHistory(data) {
+          return data.id is string && data.id.size() <= 128 &&
+            data.userId == userId &&
+            data.subjectId is string && data.subjectId.size() <= 100 &&
+            data.chapterId is string && data.chapterId.size() <= 100 &&
+            data.score is number &&
+            data.totalQuestions is int &&
+            data.correctCount is int &&
+            data.wrongCount is int &&
+            data.skippedCount is int &&
+            data.maxScore is number &&
+            data.timeTaken is int &&
+            (!('isPracticeMode' in data) || data.isPracticeMode is bool) &&
+            (!('practiceType' in data) || (data.practiceType is string && data.practiceType.size() <= 50));
+        }
+
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidHistory(request.resource.data);
+        allow update: if isOwner(userId) && isValidHistory(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // Bookmarks subcollection
+      match /bookmarks/{bookmarkId} {
+        function isValidBookmark(data) {
+          return data.userId == userId &&
+            data.subjectId is string && data.subjectId.size() <= 100 &&
+            data.chapterId is string && data.chapterId.size() <= 100 &&
+            data.questionId is int;
+        }
+
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidBookmark(request.resource.data);
+        allow update: if isOwner(userId) && isValidBookmark(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // WrongQuestions subcollection
+      match /wrongQuestions/{wrongId} {
+        function isValidWrongQuestion(data) {
+          return data.userId == userId &&
+            data.subjectId is string && data.subjectId.size() <= 100 &&
+            data.chapterId is string && data.chapterId.size() <= 100 &&
+            data.questionId is int;
+        }
+
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidWrongQuestion(request.resource.data);
+        allow update: if isOwner(userId) && isValidWrongQuestion(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

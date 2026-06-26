@@ -12,12 +12,14 @@ import {
   BookOpenCheck
 } from "lucide-react";
 import { Subject, Chapter, ChapterData, AttemptHistoryItem, Bookmark as BookmarkType } from "../types";
+import { getThemeStyles } from "../utils/theme";
 
 interface ChaptersViewProps {
   subject: Subject;
   history: AttemptHistoryItem[];
   bookmarks: BookmarkType[];
   wrongQuestions: BookmarkType[];
+  theme?: string;
   onBack: () => void;
   onStartExam: (chapterData: ChapterData, chapterId: string, options?: { onlyWrong?: boolean; onlyBookmarked?: boolean }) => void;
   onReviseChapter: (chapterData: ChapterData) => void;
@@ -28,10 +30,12 @@ export default function ChaptersView({
   history,
   bookmarks,
   wrongQuestions,
+  theme,
   onBack,
   onStartExam,
   onReviseChapter,
 }: ChaptersViewProps) {
+  const themeClass = useMemo(() => getThemeStyles(theme), [theme]);
   const [chaptersData, setChaptersData] = useState<Record<string, ChapterData>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +123,7 @@ export default function ChaptersView({
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
-            className="p-2.5 bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-2xl hover:bg-indigo-50 border border-slate-100 dark:border-slate-800/50 transition cursor-pointer"
+            className={`p-2.5 bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 hover:${themeClass.primaryText} rounded-2xl hover:${themeClass.lightBg} border border-slate-100 dark:border-slate-800/50 transition cursor-pointer`}
             id="back-to-subjects-btn"
           >
             <ArrowLeft size={18} />
@@ -136,7 +140,7 @@ export default function ChaptersView({
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 space-y-4">
-          <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+          <div className={`w-10 h-10 border-4 border-slate-200 dark:border-slate-800 border-t-indigo-600 rounded-full animate-spin`}></div>
           <p className="text-xs font-semibold text-slate-400">Loading dynamic chapter metadata...</p>
         </div>
       ) : error ? (
@@ -178,12 +182,12 @@ export default function ChaptersView({
             return (
               <div
                 key={chapter.id}
-                className="group relative rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-6 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-900/40 transition-all duration-300 flex flex-col justify-between"
+                className={`group relative rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-6 shadow-sm hover:shadow-md hover:${themeClass.borderActive} dark:hover:${themeClass.borderActive} transition-all duration-300 flex flex-col justify-between`}
               >
                 <div className="space-y-4">
                   {/* Title & Badges */}
                   <div className="flex items-start justify-between">
-                    <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 pr-4">
+                    <h3 className={`font-bold text-lg text-slate-800 dark:text-slate-200 group-hover:${themeClass.primaryText} transition-colors duration-200 pr-4`}>
                       {chapter.title}
                     </h3>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
@@ -229,7 +233,7 @@ export default function ChaptersView({
                     </div>
 
                     <div className="flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      <Bookmark size={14} className="text-indigo-500" fill="currentColor" />
+                      <Bookmark size={14} className={themeClass.primaryText} fill="currentColor" />
                       <span>Bookmarked:</span>
                       <span className="font-bold text-slate-700 dark:text-slate-300">
                         {stats.bookmarkCount}
@@ -243,7 +247,7 @@ export default function ChaptersView({
                   {/* Primary Start Button */}
                   <button
                     onClick={() => onStartExam(data, chapter.id)}
-                    className="flex items-center justify-center gap-1.5 py-3 px-4 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-500 shadow-sm transition cursor-pointer"
+                    className={`flex items-center justify-center gap-1.5 py-3 px-4 ${themeClass.primaryBg} ${themeClass.primaryHoverBg} text-white text-xs font-bold rounded-xl shadow-sm transition cursor-pointer`}
                   >
                     <Play size={13} fill="currentColor" />
                     <span>Start Test</span>
@@ -252,7 +256,7 @@ export default function ChaptersView({
                   {/* Revision Review Button */}
                   <button
                     onClick={() => onReviseChapter(data)}
-                    className="flex items-center justify-center gap-1.5 py-3 px-4 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-indigo-600 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800/60 transition cursor-pointer"
+                    className={`flex items-center justify-center gap-1.5 py-3 px-4 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:${themeClass.lightBg} hover:${themeClass.primaryText} text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800/60 transition cursor-pointer`}
                   >
                     <BookOpenCheck size={13} />
                     <span>Quick Study</span>

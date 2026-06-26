@@ -1,14 +1,17 @@
 import { useMemo } from "react";
 import { BookOpen, Layers, Award, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Subject, AttemptHistoryItem } from "../types";
+import { getThemeStyles } from "../utils/theme";
 
 interface SubjectsViewProps {
   subjects: Subject[];
   history: AttemptHistoryItem[];
+  theme?: string;
   onSelectSubject: (subjectId: string) => void;
 }
 
-export default function SubjectsView({ subjects, history, onSelectSubject }: SubjectsViewProps) {
+export default function SubjectsView({ subjects, history, theme, onSelectSubject }: SubjectsViewProps) {
+  const themeClass = useMemo(() => getThemeStyles(theme), [theme]);
   // Compute subject-wise statistics
   const subjectStats = useMemo(() => {
     const stats: Record<string, {
@@ -56,7 +59,7 @@ export default function SubjectsView({ subjects, history, onSelectSubject }: Sub
     <div className="space-y-6" id="subjects-container">
       <div className="space-y-1.5">
         <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-          <BookOpen className="text-indigo-600" size={24} />
+          <BookOpen className={themeClass.primaryText} size={24} />
           <span>Prepare by Subjects</span>
         </h2>
         <p className="text-slate-500 dark:text-slate-400 text-sm max-w-lg">
@@ -80,10 +83,10 @@ export default function SubjectsView({ subjects, history, onSelectSubject }: Sub
           return (
             <div
               key={subject.id}
-              className="group relative overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-6 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-900/40 transition-all duration-300 flex flex-col justify-between"
+              className={`group relative overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-6 shadow-sm hover:shadow-md hover:${themeClass.borderActive} dark:hover:${themeClass.borderActive} transition-all duration-300 flex flex-col justify-between`}
             >
               {/* Top Accent Gradient Border */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500/30 to-sky-500/30 group-hover:from-indigo-500 group-hover:to-sky-500 transition-all duration-300"></div>
+              <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 group-hover:${themeClass.primaryBg} transition-all duration-300`}></div>
 
               <div className="space-y-5">
                 <div className="flex items-start justify-between">
@@ -99,7 +102,7 @@ export default function SubjectsView({ subjects, history, onSelectSubject }: Sub
                 </div>
 
                 <div className="space-y-1.5">
-                  <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
+                  <h3 className={`text-xl font-bold text-slate-800 dark:text-slate-100 group-hover:${themeClass.primaryText} transition-colors duration-200`}>
                     {subject.name}
                   </h3>
                   <div className="flex items-center gap-3 text-xs text-slate-400 font-medium">
@@ -120,7 +123,7 @@ export default function SubjectsView({ subjects, history, onSelectSubject }: Sub
                   </div>
                   <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-indigo-600 rounded-full transition-all duration-500"
+                      className={`h-full ${themeClass.primaryBg} rounded-full transition-all duration-500`}
                       style={{ width: `${completionPercentage}%` }}
                     ></div>
                   </div>
@@ -139,7 +142,7 @@ export default function SubjectsView({ subjects, history, onSelectSubject }: Sub
 
                 <button
                   onClick={() => onSelectSubject(subject.id)}
-                  className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-500 rounded-xl transition duration-150 cursor-pointer"
+                  className={`flex items-center gap-1 px-3 py-2 text-xs font-bold ${themeClass.primaryText} hover:text-white hover:${themeClass.primaryBg} rounded-xl transition duration-150 cursor-pointer`}
                 >
                   <span>Chapters</span>
                   <ChevronRight size={14} />

@@ -15,7 +15,12 @@ import {
   Sparkles,
   Play,
   Moon,
-  Sun
+  Sun,
+  LogIn,
+  LogOut,
+  Cloud,
+  CloudOff,
+  RefreshCw
 } from "lucide-react";
 import {
   Subject,
@@ -40,6 +45,22 @@ import {
   saveResumableSession,
   clearResumableSession
 } from "./utils";
+import {
+  auth,
+  googleProvider,
+  fetchUserDoc,
+  saveUserDoc,
+  fetchUserHistory,
+  saveUserHistoryItem,
+  fetchUserBookmarks,
+  saveUserBookmark,
+  deleteUserBookmark,
+  fetchUserWrongQuestions,
+  saveUserWrongQuestion,
+  deleteUserWrongQuestion
+} from "./firebase";
+import { signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
+import { getThemeStyles } from "./utils/theme";
 
 // Views
 import DashboardView from "./components/DashboardView";
@@ -59,6 +80,10 @@ export default function App() {
   const [currentView, setCurrentView] = useState<string>("dashboard");
   const [activeSubject, setActiveSubject] = useState<Subject | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+
+  // Firebase Auth & Sync states
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   // Auto collapse on small/medium screens on mount
   useEffect(() => {
@@ -89,6 +114,8 @@ export default function App() {
     questions: { subjectName: string; chapterTitle: string; question: Question }[];
   }>({ subjects: [], chapters: [], questions: [] });
 
+  const themeClass = useMemo(() => getThemeStyles(settings.theme), [settings.theme]);
+
   // Load Manifest on Mount
   useEffect(() => {
     fetch("/data/manifest.json")
@@ -105,6 +132,105 @@ export default function App() {
         setError("Failed to load application index. Please make sure data files exist.");
         setLoading(false);
       });
+  }, []);
+
+  // Monitor auth state and sync with Firestore
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      setCurrentUser(firebaseUser);
+      if (firebaseUser) {
+        setIsSyncing(true);
+        try {
+          const uid = firebaseUser.uid;
+
+          // 1. Fetch user doc (settings)
+          const dbSettings = await fetchUserDoc(uid);
+          let activeSettings = settings;
+          if (dbSettings) {
+            const merged = {
+              ...settings,
+              ...dbSettings,
+              userName: dbSettings.userName || firebaseUser.displayName || settings.userName,
+            };
+            setSettings(merged);
+            saveAppSettings(merged);
+            activeSettings = merged;
+          } else {
+            // First time login: push current settings to Firestore
+            const initialSettings = {
+              ...settings,
+              userName: firebaseUser.displayName || settings.userName,
+            };
+            await saveUserDoc(uid, initialSettings);
+            setSettings(initialSettings);
+            saveAppSettings(initialSettings);
+            activeSettings = initialSettings;
+          }
+
+          // 2. Fetch history and merge
+          const dbHistory = await fetchUserHistory(uid);
+          const mergedHistory = [...history];
+          dbHistory.forEach((dbItem) => {
+            if (!mergedHistory.some((h) => h.id === dbItem.id)) {
+              mergedHistory.push(dbItem);
+            }
+          });
+          for (const localItem of history) {
+            if (!dbHistory.some((dbH) => dbH.id === localItem.id)) {
+              await saveUserHistoryItem(uid, localItem);
+            }
+          }
+          mergedHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          setHistory(mergedHistory);
+          saveAttemptHistory(mergedHistory);
+
+          // 3. Fetch bookmarks and merge
+          const dbBookmarks = await fetchUserBookmarks(uid);
+          const mergedBookmarks = [...bookmarks];
+          dbBookmarks.forEach((dbB) => {
+            if (!mergedBookmarks.some((b) => b.subjectId === dbB.subjectId && b.chapterId === dbB.chapterId && b.questionId === dbB.questionId)) {
+              mergedBookmarks.push(dbB);
+            }
+          });
+          for (const localB of bookmarks) {
+            if (!dbBookmarks.some((dbB) => dbB.subjectId === localB.subjectId && dbB.chapterId === localB.chapterId && dbB.questionId === localB.questionId)) {
+              await saveUserBookmark(uid, localB);
+            }
+          }
+          setBookmarks(mergedBookmarks);
+          saveBookmarks(mergedBookmarks);
+
+          // 4. Fetch wrong questions and merge
+          const dbWrongs = await fetchUserWrongQuestions(uid);
+          const mergedWrongs = [...wrongQuestions];
+          dbWrongs.forEach((dbW) => {
+            if (!mergedWrongs.some((w) => w.subjectId === dbW.subjectId && w.chapterId === dbW.chapterId && w.questionId === dbW.questionId)) {
+              mergedWrongs.push(dbW);
+            }
+          });
+          for (const localW of wrongQuestions) {
+            if (!dbWrongs.some((dbW) => dbW.subjectId === localW.subjectId && dbW.chapterId === localW.chapterId && dbW.questionId === localW.questionId)) {
+              await saveUserWrongQuestion(uid, localW);
+            }
+          }
+          setWrongQuestions(mergedWrongs);
+          saveWrongQuestions(mergedWrongs);
+
+        } catch (err) {
+          console.error("Error syncing with Firebase Firestore: ", err);
+        } finally {
+          setIsSyncing(false);
+        }
+      } else {
+        // Logged out: reset to local storage
+        setSettings(getAppSettings());
+        setHistory(getAttemptHistory());
+        setBookmarks(getBookmarks());
+        setWrongQuestions(getWrongQuestions());
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Sync settings theme to document body
@@ -134,6 +260,9 @@ export default function App() {
   const handleUpdateSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
     saveAppSettings(newSettings);
+    if (auth.currentUser) {
+      saveUserDoc(auth.currentUser.uid, newSettings);
+    }
   };
 
   // Toggle Dark Mode
@@ -141,6 +270,28 @@ export default function App() {
     const updated = { ...settings, isDarkMode: !settings.isDarkMode };
     setSettings(updated);
     saveAppSettings(updated);
+    if (auth.currentUser) {
+      saveUserDoc(auth.currentUser.uid, updated);
+    }
+  };
+
+  // Google Sign In
+  const handleSignIn = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Google Sign-In failed:", error);
+      alert("Sign-in failed. Please make sure popups are allowed or try again.");
+    }
+  };
+
+  // Sign Out
+  const handleSignOut = async () => {
+    try {
+      await firebaseSignOut(auth);
+    } catch (error) {
+      console.error("Sign-out failed:", error);
+    }
   };
 
   // Toggle Bookmark Handler (usable app-wide)
@@ -167,10 +318,17 @@ export default function App() {
       );
 
       let updated;
+      const bookmarkItem = { subjectId: subId!, chapterId: chapId!, questionId };
       if (idx > -1) {
         updated = prev.filter((_, i) => i !== idx);
+        if (auth.currentUser) {
+          deleteUserBookmark(auth.currentUser.uid, bookmarkItem);
+        }
       } else {
-        updated = [...prev, { subjectId: subId!, chapterId: chapId!, questionId }];
+        updated = [...prev, bookmarkItem];
+        if (auth.currentUser) {
+          saveUserBookmark(auth.currentUser.uid, bookmarkItem);
+        }
       }
 
       saveBookmarks(updated);
@@ -374,6 +532,9 @@ export default function App() {
     const updatedHistory = [historyItem, ...history];
     setHistory(updatedHistory);
     saveAttemptHistory(updatedHistory);
+    if (auth.currentUser) {
+      saveUserHistoryItem(auth.currentUser.uid, historyItem);
+    }
 
     // Update Wrong Questions tracking
     let updatedWrongs = [...wrongQuestions];
@@ -384,14 +545,21 @@ export default function App() {
         (w) => w.subjectId === subjectId && w.chapterId === chapterId && w.questionId === q.id
       );
 
+      const wrongItem = { subjectId, chapterId, questionId: q.id };
       if (isWrong) {
         if (keyIdx === -1) {
-          updatedWrongs.push({ subjectId, chapterId, questionId: q.id });
+          updatedWrongs.push(wrongItem);
+          if (auth.currentUser) {
+            saveUserWrongQuestion(auth.currentUser.uid, wrongItem);
+          }
         }
       } else if (selected === q.correct) {
         // Correctly answered now, remove from wrongs!
         if (keyIdx > -1) {
           updatedWrongs = updatedWrongs.filter((_, idx) => idx !== keyIdx);
+          if (auth.currentUser) {
+            deleteUserWrongQuestion(auth.currentUser.uid, wrongItem);
+          }
         }
       }
     });
@@ -577,15 +745,7 @@ export default function App() {
   // Render Sidebar navigation items
   const renderSidebarItem = (view: string, label: string, icon: React.ReactNode) => {
     const isActive = currentView === view;
-    const activeThemes = {
-      slate: "bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 font-bold",
-      amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold",
-      emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold",
-      ocean: "bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold",
-      rose: "bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold",
-      classic: "bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 font-bold",
-    };
-    const activeClass = activeThemes[settings.theme] || activeThemes.slate;
+    const activeClass = `${themeClass.lightBg} ${themeClass.primaryText} font-bold`;
 
     return (
       <button
@@ -617,6 +777,7 @@ export default function App() {
             session={activeSession}
             bookmarks={bookmarks}
             isDarkMode={settings.isDarkMode}
+            theme={settings.theme}
             onToggleDarkMode={handleToggleDarkMode}
             onToggleBookmark={handleToggleBookmark}
             onSubmitExam={handleSubmitExam}
@@ -636,7 +797,7 @@ export default function App() {
             {/* App Branding */}
             <div className={`flex items-center ${isSidebarCollapsed ? "flex-col gap-4" : "justify-between"} pb-6 border-b border-slate-200 dark:border-slate-800/60 mb-6`}>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-100 dark:shadow-none">
+                <div className={`w-10 h-10 ${themeClass.primaryBg} rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg ${themeClass.shadowMd} dark:shadow-none`}>
                   <BookOpen size={20} />
                 </div>
                 {!isSidebarCollapsed && (
@@ -666,7 +827,7 @@ export default function App() {
                   <button
                     onClick={() => setCurrentView("exam")}
                     title={`Resume Exam: ${activeSession.chapterTitle}`}
-                    className="w-10 h-10 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg flex items-center justify-center transition duration-150 cursor-pointer shadow-lg shadow-indigo-950/40 shrink-0"
+                    className={`w-10 h-10 ${themeClass.primaryBg} ${themeClass.primaryHoverBg} text-white rounded-lg flex items-center justify-center transition duration-150 cursor-pointer shadow-lg ${themeClass.shadowLg} shrink-0`}
                   >
                     <Play size={16} fill="currentColor" />
                   </button>
@@ -676,7 +837,7 @@ export default function App() {
                     <h4 className="font-bold text-sm mb-3 truncate">{activeSession.chapterTitle}</h4>
                     <button
                       onClick={() => setCurrentView("exam")}
-                      className="w-full py-2 bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-bold rounded-lg transition duration-150 cursor-pointer shadow-lg shadow-indigo-900/40"
+                      className={`w-full py-2 ${themeClass.primaryBg} ${themeClass.primaryHoverBg} text-white text-xs font-bold rounded-lg transition duration-150 cursor-pointer shadow-lg ${themeClass.shadowLg}`}
                     >
                       Resume Exam
                     </button>
@@ -693,7 +854,7 @@ export default function App() {
             <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800/60 px-8 flex items-center justify-between shrink-0 select-none">
               {/* Mobile Branding / Menu Trigger */}
               <div className="flex items-center gap-3 md:hidden">
-                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-md">
+                <div className={`w-10 h-10 ${themeClass.primaryBg} rounded-xl flex items-center justify-center text-white shadow-md`}>
                   <BookOpen size={18} />
                 </div>
                 <h1 className="font-extrabold text-lg text-slate-900 dark:text-slate-100 tracking-tight">EXAM.PRO</h1>
@@ -707,7 +868,7 @@ export default function App() {
                   placeholder="Search subjects, chapters, questions..."
                   value={searchQuery}
                   onChange={(e) => handleGlobalSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-100 dark:bg-slate-800/60 border-none rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 transition-all text-slate-800 dark:text-slate-100"
+                  className={`w-full pl-10 pr-4 py-2.5 bg-slate-100 dark:bg-slate-800/60 border-none rounded-xl text-sm focus:outline-none focus:ring-2 ${themeClass.focusRing} transition-all text-slate-800 dark:text-slate-100`}
                 />
                 {isSearching && (
                   <button
@@ -722,33 +883,95 @@ export default function App() {
                 )}
               </div>
 
-              {/* Quick Profile / Dark mode toggles */}
+              {/* Quick Profile */}
               <div className="flex items-center gap-5">
-                <button
-                  onClick={handleToggleDarkMode}
-                  className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 transition text-slate-500 cursor-pointer"
-                  title="Toggle Visual Theme"
-                >
-                  {settings.isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
-                </button>
-                <div className="flex items-center gap-3">
-                  <div className="text-right hidden lg:block">
-                    <p className="text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{settings.userName || "Dr. Sarah Chen"}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{settings.userTitle || "Aspirant Level 14"}</p>
+                {currentUser ? (
+                  <div className="flex items-center gap-4">
+                    {/* Sync indicator */}
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      {isSyncing ? (
+                        <>
+                          <RefreshCw className={`animate-spin ${themeClass.primaryText}`} size={13} />
+                          <span className="hidden sm:inline">Syncing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Cloud className="text-emerald-500" size={13} />
+                          <span className="hidden sm:inline text-emerald-600 dark:text-emerald-400">Synced</span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Profile avatar & metadata */}
+                    <div className="flex items-center gap-3">
+                      <div className="text-right hidden lg:block">
+                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{currentUser.displayName || settings.userName || "Dr. Sarah Chen"}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{settings.userTitle || "Cloud Member"}</p>
+                      </div>
+                      {currentUser.photoURL ? (
+                        <img
+                          src={currentUser.photoURL}
+                          alt={currentUser.displayName || "User"}
+                          className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 shadow-sm object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className={`w-10 h-10 rounded-full ${themeClass.accentBg} border-2 border-white dark:border-slate-800 shadow-sm flex items-center justify-center ${themeClass.accentText} font-bold overflow-hidden select-none`}>
+                          {(() => {
+                            const name = currentUser.displayName || settings.userName || "User";
+                            const parts = name.trim().split(/\s+/);
+                            const filteredParts = parts.filter(p => !/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|md\.?)$/i.test(p));
+                            const activeParts = filteredParts.length > 0 ? filteredParts : parts;
+                            if (activeParts.length === 1) {
+                              return activeParts[0].substring(0, 2).toUpperCase();
+                            }
+                            return (activeParts[0][0] + activeParts[activeParts.length - 1][0]).toUpperCase();
+                          })()}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Disconnect / Sign out button */}
+                    <button
+                      onClick={handleSignOut}
+                      className="p-2.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-red-100 dark:hover:border-red-900/40 transition text-slate-500 hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
+                      title="Sign Out / Disconnect Sync"
+                    >
+                      <LogOut size={15} />
+                    </button>
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-950/40 border-2 border-white dark:border-slate-800 shadow-sm flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-bold overflow-hidden select-none">
-                    {(() => {
-                      const name = settings.userName || "Dr. Sarah Chen";
-                      const parts = name.trim().split(/\s+/);
-                      const filteredParts = parts.filter(p => !/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|md\.?)$/i.test(p));
-                      const activeParts = filteredParts.length > 0 ? filteredParts : parts;
-                      if (activeParts.length === 1) {
-                        return activeParts[0].substring(0, 2).toUpperCase();
-                      }
-                      return (activeParts[0][0] + activeParts[activeParts.length - 1][0]).toUpperCase();
-                    })()}
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleSignIn}
+                      className={`flex items-center gap-2 px-4 py-2 ${themeClass.primaryBg} ${themeClass.primaryHoverBg} text-white rounded-xl text-xs font-bold shadow-md ${themeClass.shadowMd} transition duration-200 cursor-pointer`}
+                      title="Sync stats and backups via Google Sign In"
+                    >
+                      <LogIn size={13} />
+                      <span className="hidden sm:inline">Sync Account</span>
+                      <span className="sm:hidden">Sync</span>
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-right hidden lg:block">
+                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{settings.userName || "Dr. Sarah Chen"}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{settings.userTitle || "Aspirant Level 14"}</p>
+                      </div>
+                      <div className={`w-10 h-10 rounded-full ${themeClass.accentBg} border-2 border-white dark:border-slate-800 shadow-sm flex items-center justify-center ${themeClass.accentText} font-bold overflow-hidden select-none`}>
+                        {(() => {
+                          const name = settings.userName || "Dr. Sarah Chen";
+                          const parts = name.trim().split(/\s+/);
+                          const filteredParts = parts.filter(p => !/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|md\.?)$/i.test(p));
+                          const activeParts = filteredParts.length > 0 ? filteredParts : parts;
+                          if (activeParts.length === 1) {
+                            return activeParts[0].substring(0, 2).toUpperCase();
+                          }
+                          return (activeParts[0][0] + activeParts[activeParts.length - 1][0]).toUpperCase();
+                        })()}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </header>
 
@@ -760,7 +983,7 @@ export default function App() {
                   setActiveSubject(null);
                   setIsSearching(false);
                 }}
-                className={`flex flex-col items-center gap-1 p-2 ${currentView === "dashboard" ? "text-indigo-600" : ""}`}
+                className={`flex flex-col items-center gap-1 p-2 ${currentView === "dashboard" ? themeClass.primaryText : ""}`}
               >
                 <LayoutDashboard size={18} />
                 <span className="text-[9px] font-bold">Dashboard</span>
@@ -771,7 +994,7 @@ export default function App() {
                   setActiveSubject(null);
                   setIsSearching(false);
                 }}
-                className={`flex flex-col items-center gap-1 p-2 ${currentView === "subjects" ? "text-indigo-600" : ""}`}
+                className={`flex flex-col items-center gap-1 p-2 ${currentView === "subjects" ? themeClass.primaryText : ""}`}
               >
                 <BookOpen size={18} />
                 <span className="text-[9px] font-bold">Subjects</span>
@@ -782,7 +1005,7 @@ export default function App() {
                   setActiveSubject(null);
                   setIsSearching(false);
                 }}
-                className={`flex flex-col items-center gap-1 p-2 ${currentView === "settings" ? "text-indigo-600" : ""}`}
+                className={`flex flex-col items-center gap-1 p-2 ${currentView === "settings" ? themeClass.primaryText : ""}`}
               >
                 <SettingsIcon size={18} />
                 <span className="text-[9px] font-bold">Settings</span>
@@ -793,7 +1016,7 @@ export default function App() {
             <main className="flex-1 overflow-y-auto p-6 md:p-8">
               {loading ? (
                 <div className="flex flex-col items-center justify-center h-full py-32 space-y-3">
-                  <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                  <div className={`w-10 h-10 border-4 border-slate-200 dark:border-slate-800 border-t-indigo-600 rounded-full animate-spin`}></div>
                   <p className="text-xs font-semibold text-slate-400">Loading catalog indexes...</p>
                 </div>
               ) : error ? (
@@ -884,7 +1107,7 @@ export default function App() {
                           <div className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-2xl overflow-hidden">
                             {searchResults.questions.map((item, idx) => (
                               <div key={idx} className="p-4 space-y-1 bg-white dark:bg-slate-900">
-                                <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 py-0.5 px-2 rounded-md">
+                                <span className={`text-[9px] font-bold ${themeClass.primaryText} ${themeClass.lightBg} py-0.5 px-2 rounded-md`}>
                                   {item.subjectName} • {item.chapterTitle}
                                 </span>
                                 <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 pt-1 leading-relaxed">
@@ -921,6 +1144,7 @@ export default function App() {
                       bookmarks={bookmarks}
                       dailyTarget={settings.dailyTarget}
                       userName={settings.userName}
+                      theme={settings.theme}
                       onNavigate={(view, data) => {
                         if (view === "chapters" && data?.subjectId) {
                           const matched = subjects.find((s) => s.id === data.subjectId);
@@ -940,6 +1164,7 @@ export default function App() {
                     <SubjectsView
                       subjects={subjects}
                       history={history}
+                      theme={settings.theme}
                       onSelectSubject={(subjectId) => {
                         const sub = subjects.find((s) => s.id === subjectId);
                         if (sub) {
@@ -956,6 +1181,7 @@ export default function App() {
                       history={history}
                       bookmarks={bookmarks}
                       wrongQuestions={wrongQuestions}
+                      theme={settings.theme}
                       onBack={() => {
                         setActiveSubject(null);
                         setCurrentView("subjects");
@@ -987,6 +1213,7 @@ export default function App() {
                       chapterId={activeHistoryItem.chapterId}
                       subjectName={activeHistoryItem.subjectName}
                       chapterTitle={activeHistoryItem.chapterTitle}
+                      theme={settings.theme}
                       onToggleBookmark={(qId) => handleToggleBookmark(qId)}
                       onBack={() => {
                         if (activeHistoryItem.id === "study_only") {
