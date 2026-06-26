@@ -9,7 +9,8 @@ import {
   CheckCircle,
   Play,
   RotateCcw,
-  BookOpenCheck
+  BookOpenCheck,
+  Lock
 } from "lucide-react";
 import { Subject, Chapter, ChapterData, AttemptHistoryItem, Bookmark as BookmarkType } from "../types";
 import { getThemeStyles } from "../utils/theme";
@@ -256,9 +257,19 @@ export default function ChaptersView({
                   {/* Revision Review Button */}
                   <button
                     onClick={() => onReviseChapter(data)}
-                    className={`flex items-center justify-center gap-1.5 py-3 px-4 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:${themeClass.lightBg} hover:${themeClass.primaryText} text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800/60 transition cursor-pointer`}
+                    disabled={!stats.completed}
+                    className={`flex items-center justify-center gap-1.5 py-3 px-4 text-xs font-bold rounded-xl border transition ${
+                      stats.completed
+                        ? `bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:${themeClass.lightBg} hover:${themeClass.primaryText} border-slate-200 dark:border-slate-800/60 cursor-pointer`
+                        : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-200 dark:border-slate-800/20 cursor-not-allowed opacity-50"
+                    }`}
+                    title={!stats.completed ? "Unlock Quick Study by completing the test at least once" : "Quick Revision Mode"}
                   >
-                    <BookOpenCheck size={13} />
+                    {stats.completed ? (
+                      <BookOpenCheck size={13} />
+                    ) : (
+                      <Lock size={13} className="text-slate-400" />
+                    )}
                     <span>Quick Study</span>
                   </button>
 

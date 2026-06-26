@@ -43,7 +43,9 @@ import {
   saveLastOpened,
   getResumableSession,
   saveResumableSession,
-  clearResumableSession
+  clearResumableSession,
+  clearUserData,
+  DEFAULT_SETTINGS
 } from "./utils";
 import {
   auth,
@@ -57,9 +59,12 @@ import {
   deleteUserBookmark,
   fetchUserWrongQuestions,
   saveUserWrongQuestion,
-  deleteUserWrongQuestion
-} from "./firebase";
-import { signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
+  deleteUserWrongQuestion,
+  signInWithPopup,
+  firebaseSignOut,
+  signUpWithEmail,
+  signInWithEmail
+} from "./supabase";
 import { getThemeStyles } from "./utils/theme";
 
 // Views
@@ -84,6 +89,15 @@ export default function App() {
   // Firebase Auth & Sync states
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  // Supabase Auth modal states
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [authEmail, setAuthEmail] = useState<string>("");
+  const [authPassword, setAuthPassword] = useState<string>("");
+  const [authName, setAuthName] = useState<string>("");
+  const [isSignUpMode, setIsSignUpMode] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<string>("");
+  const [authLoading, setAuthLoading] = useState<boolean>(false);
 
   // Auto collapse on small/medium screens on mount
   useEffect(() => {
@@ -275,13 +289,45 @@ export default function App() {
     }
   };
 
-  // Google Sign In
-  const handleSignIn = async () => {
+  // Supabase Sign In Modal opener
+  const handleSignIn = () => {
+    setAuthEmail("");
+    setAuthPassword("");
+    setAuthName("");
+    setAuthError("");
+    setIsSignUpMode(false);
+    setIsAuthModalOpen(true);
+  };
+
+  // Supabase Auth Submit (Email & Password)
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Google Sign-In failed:", error);
-      alert("Sign-in failed. Please make sure popups are allowed or try again.");
+      if (isSignUpMode) {
+        await signUpWithEmail(authEmail, authPassword, authName || undefined);
+        alert(
+          "Account created successfully!\n\n" +
+          "Note: If your Supabase project has 'Confirm Email' enabled under Authentication -> Providers -> Email, please check your email inbox for a verification link.\n\n" +
+          "Otherwise, you can now enter your email and password to sign in immediately!"
+        );
+        setIsSignUpMode(false);
+        setAuthPassword("");
+      } else {
+        await signInWithEmail(authEmail, authPassword);
+        setIsAuthModalOpen(false);
+      }
+    } catch (err: any) {
+      console.error("Auth action failed:", err);
+      let errMsg = err?.message || err?.msg || String(err);
+      if (errMsg.includes("Email signups are disabled")) {
+        errMsg = "Email signups are disabled in your Supabase project. Go to Authentication -> Providers -> Email in your Supabase dashboard to enable email/password signups.";
+      }
+      setAuthError(errMsg);
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -289,6 +335,16 @@ export default function App() {
   const handleSignOut = async () => {
     try {
       await firebaseSignOut(auth);
+      clearUserData();
+      setSettings(DEFAULT_SETTINGS);
+      setHistory([]);
+      setBookmarks([]);
+      setWrongQuestions([]);
+      setActiveSession(null);
+      setActiveHistoryItem(null);
+      setActiveQuestions([]);
+      setActiveAnswers({});
+      setCurrentView("dashboard");
     } catch (error) {
       console.error("Sign-out failed:", error);
     }
@@ -1228,6 +1284,146 @@ export default function App() {
             </main>
           </div>
         </>
+      )}
+
+      {/* Supabase Email/Password Auth Modal */}
+      {isAuthModalOpen && (
+        <div id="auth-modal" className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300">
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all duration-300 scale-100 flex flex-col">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Cloud className={`w-5 h-5 ${themeClass.primaryText}`} />
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 font-sans">
+                  {isSignUpMode ? "Create Account" : "Sync Account"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsAuthModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <form onSubmit={handleAuthSubmit} className="p-6 space-y-4">
+              {authError && (
+                <div className="p-3.5 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 text-xs rounded-xl border border-red-100 dark:border-red-900/30 whitespace-pre-line font-sans flex flex-col gap-2">
+                  <div className="font-bold flex items-center gap-1">
+                    <span>⚠️ Authentication Error</span>
+                  </div>
+                  <div>{authError}</div>
+                  {authError.toLowerCase().includes("invalid login credentials") && (
+                    <div className="text-[11px] mt-1 text-slate-600 dark:text-slate-400 border-t border-red-100 dark:border-red-900/20 pt-2 leading-relaxed space-y-1">
+                      <p>💡 <strong>Not registered yet?</strong> Click on the <button type="button" onClick={() => { setIsSignUpMode(true); setAuthError(""); }} className="text-indigo-600 dark:text-indigo-400 font-bold underline hover:text-indigo-800 transition">Register</button> tab above to create a new account first.</p>
+                      <p>💡 <strong>Already registered?</strong> Ensure your email and password are exactly correct. If you recently signed up, check your email inbox (and spam) for a verification link if email confirmation is turned on in your Supabase project.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Toggle Tabs */}
+              <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUpMode(false);
+                    setAuthError("");
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                    !isSignUpMode
+                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-50 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUpMode(true);
+                    setAuthError("");
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                    isSignUpMode
+                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-50 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                  }`}
+                >
+                  Register
+                </button>
+              </div>
+
+              {isSignUpMode && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400 font-sans">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. John Doe"
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 font-sans"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 font-sans">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@example.com"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 font-sans"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 font-sans">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="Min. 6 characters"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 font-sans"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className={`w-full py-2.5 px-4 mt-2 text-sm font-bold text-white ${themeClass.primaryBg} ${themeClass.primaryHoverBg} rounded-xl shadow-md ${themeClass.shadowMd} transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {authLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <span>{isSignUpMode ? "Create Account" : "Sign In & Sync"}</span>
+                )}
+              </button>
+              
+              <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 font-sans mt-2 leading-relaxed">
+                {!isSignUpMode 
+                  ? "Sign in to securely back up and access your progress, settings, and bookmarks from any device."
+                  : "Create an account to start syncing your exam preparation statistics with the cloud."}
+              </p>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

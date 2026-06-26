@@ -2,13 +2,13 @@ import { AppSettings, AttemptHistoryItem, Bookmark } from "./types";
 
 // Local Storage Keys
 export const STORAGE_KEYS = {
-  SETTINGS: "exam_app_settings",
-  HISTORY: "exam_app_history",
-  BOOKMARKS: "exam_app_bookmarks",
-  LAST_OPENED_SUBJECT: "exam_app_last_subject",
-  LAST_OPENED_CHAPTER: "exam_app_last_chapter",
-  RESUME_EXAM: "exam_app_resume_session",
-  WRONG_QUESTIONS: "exam_app_wrong_questions",
+  SETTINGS: "modular_exam_portal_settings_v2",
+  HISTORY: "modular_exam_portal_history_v2",
+  BOOKMARKS: "modular_exam_portal_bookmarks_v2",
+  LAST_OPENED_SUBJECT: "modular_exam_portal_last_subject_v2",
+  LAST_OPENED_CHAPTER: "modular_exam_portal_last_chapter_v2",
+  RESUME_EXAM: "modular_exam_portal_resume_session_v2",
+  WRONG_QUESTIONS: "modular_exam_portal_wrong_questions_v2",
 };
 
 // Default Settings
@@ -18,8 +18,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fontSize: 16,
   questionFont: "sans",
   dailyTarget: 15,
-  userName: "Dr. Sarah Chen",
-  userTitle: "Aspirant Level 14",
+  userName: "Guest",
+  userTitle: "Level 1 Aspirant",
 };
 
 // Safe JSON Parse wrapper
@@ -161,6 +161,17 @@ export function importUserData(jsonStr: string): boolean {
 
 // Clean All Progress
 export function clearAllProgress(): void {
+  localStorage.removeItem(STORAGE_KEYS.HISTORY);
+  localStorage.removeItem(STORAGE_KEYS.BOOKMARKS);
+  localStorage.removeItem(STORAGE_KEYS.LAST_OPENED_SUBJECT);
+  localStorage.removeItem(STORAGE_KEYS.LAST_OPENED_CHAPTER);
+  localStorage.removeItem(STORAGE_KEYS.RESUME_EXAM);
+  localStorage.removeItem(STORAGE_KEYS.WRONG_QUESTIONS);
+}
+
+// Clean All User Data including Settings
+export function clearUserData(): void {
+  localStorage.removeItem(STORAGE_KEYS.SETTINGS);
   localStorage.removeItem(STORAGE_KEYS.HISTORY);
   localStorage.removeItem(STORAGE_KEYS.BOOKMARKS);
   localStorage.removeItem(STORAGE_KEYS.LAST_OPENED_SUBJECT);
