@@ -1,0 +1,48 @@
+{
+  "subjects": [
+    {
+      "id": "history",
+      "name": "History",
+      "icon": "🏛️",
+      "folder": "History",
+      "chapters": [
+        {
+          "id": "chapter01",
+          "title": "Indus Valley Civilization",
+          "file": "chapter01.json"
+        },
+        {
+          "id": "chapter02",
+          "title": "The Maurya Empire",
+          "file": "chapter02.json"
+        }
+      ]
+    },
+    {
+      "id": "polity",
+      "name": "Polity",
+      "icon": "⚖️",
+      "folder": "Polity",
+      "chapters": [
+        {
+          "id": "chapter01",
+          "title": "Preamble & Salient Features",
+          "file": "chapter01.json"
+        }
+      ]
+    },
+    {
+      "id": "geography",
+      "name": "Geography",
+      "icon": "🌍",
+      "folder": "Geography",
+      "chapters": [
+        {
+          "id": "chapter01",
+          "title": "Physiography of India",
+          "file": "chapter01.json"
+        }
+      ]
+    }
+  ]
+}

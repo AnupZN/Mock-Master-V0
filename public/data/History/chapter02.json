@@ -1,0 +1,84 @@
+{
+  "subject": "History",
+  "chapter": "The Maurya Empire",
+  "timePerQuestion": 30,
+  "positiveMarks": 2,
+  "negativeMarks": 0.50,
+  "questions": [
+    {
+      "id": 1,
+      "question": "Who was the Greek ambassador sent to the court of Chandragupta Maurya?",
+      "options": [
+        "Megasthenes",
+        "Deimachus",
+        "Dionysius",
+        "Seleucus Nicator"
+      ],
+      "correct": 0,
+      "explanation": "Megasthenes was sent by Seleucus I Nicator as an ambassador to Chandragupta Maurya's capital of Pataliputra, and wrote the famous account titled 'Indica'.",
+      "difficulty": "Easy",
+      "tags": [
+        "Chandragupta",
+        "Foreign accounts"
+      ],
+      "question_hi": "चंद्रगुप्त मौर्य के दरबार में भेजा गया यूनानी राजदूत कौन था?",
+      "options_hi": [
+        "मेगास्थनीज",
+        "डाईमेचस",
+        "डायोनिसियस",
+        "सेल्यूकस निकेटर"
+      ],
+      "explanation_hi": "मेगास्थनीज को सेल्यूकस प्रथम निकेटर द्वारा चंद्रगुप्त मौर्य की राजधानी पाटलिपुत्र में राजदूत के रूप में भेजा गया था, और उन्होंने 'इंडिका' नामक प्रसिद्ध पुस्तक लिखी थी।"
+    },
+    {
+      "id": 2,
+      "question": "Which Mauryan ruler is famously credited with the spread of Buddhism across Sri Lanka and Southeast Asia?",
+      "options": [
+        "Chandragupta Maurya",
+        "Bindusara",
+        "Ashoka",
+        "Dasharatha"
+      ],
+      "correct": 2,
+      "explanation": "Emperor Ashoka embraced Buddhism after the Kalinga War and sent Dhamma missionaries, including his son Mahendra and daughter Sanghamitra, to Sri Lanka and other regions.",
+      "difficulty": "Easy",
+      "tags": [
+        "Ashoka",
+        "Buddhism"
+      ],
+      "question_hi": "किस मौर्य शासक को श्रीलंका और दक्षिण-पूर्व एशिया में बौद्ध धर्म के प्रसार का श्रेय दिया जाता है?",
+      "options_hi": [
+        "चंद्रगुप्त मौर्य",
+        "बिन्दुसार",
+        "अशोक",
+        "दशरथ"
+      ],
+      "explanation_hi": "सम्राट अशोक ने कलिंग युद्ध के बाद बौद्ध धर्म अपना लिया और अपने पुत्र महेंद्र और पुत्री संघमित्रा सहित धम्म प्रचारकों को श्रीलंका और अन्य क्षेत्रों में भेजा।"
+    },
+    {
+      "id": 3,
+      "question": "The Arthashastra, a treatise on statecraft, economic policy, and military strategy, is attributed to:",
+      "options": [
+        "Kautilya",
+        "Kalidasa",
+        "Vishakhadatta",
+        "Bhasa"
+      ],
+      "correct": 0,
+      "explanation": "Kautilya (also known as Chanakya or Vishnugupta) was the prime minister and mentor of Chandragupta Maurya, and is the traditional author of the Arthashastra.",
+      "difficulty": "Easy",
+      "tags": [
+        "Literature",
+        "Administration"
+      ],
+      "question_hi": "अर्थशास्त्र, जो शासनकला, आर्थिक नीति और सैन्य रणनीति पर एक ग्रंथ है, किसे समर्पित है?",
+      "options_hi": [
+        "कौटिल्य",
+        "कालिदास",
+        "विशाखदत्त",
+        "भास"
+      ],
+      "explanation_hi": "कौटिल्य (जिन्हें चाणक्य या विष्णुगुप्त के नाम से भी जाना जाता है) चंद्रगुप्त मौर्य के प्रधानमंत्री और गुरु थे, और वे अर्थशास्त्र के पारंपरिक लेखक हैं।"
+    }
+  ]
+}

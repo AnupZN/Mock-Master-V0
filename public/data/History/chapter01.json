@@ -1,0 +1,118 @@
+{
+  "subject": "History",
+  "chapter": "Indus Valley Civilization",
+  "timePerQuestion": 30,
+  "positiveMarks": 2,
+  "negativeMarks": 0.50,
+  "questions": [
+    {
+      "id": 1,
+      "question": "Which of the following Indus Valley sites is known for having a unique dockyard?",
+      "options": [
+        "Harappa",
+        "Mohenjo-daro",
+        "Lothal",
+        "Kalibangan"
+      ],
+      "correct": 2,
+      "explanation": "Lothal in Gujarat, India, had a massive tidal dockyard connected to the ancient course of the Sabarmati river, demonstrating advanced maritime and engineering knowledge.",
+      "difficulty": "Easy",
+      "tags": [
+        "Lothal",
+        "Trade"
+      ],
+      "question_hi": "निम्नलिखित में से कौन सा सिंधु घाटी स्थल एक अनोखे गोदी बाड़े (dockyard) के लिए जाना जाता है?",
+      "options_hi": [
+        "हड़प्पा",
+        "मोहनजोदड़ो",
+        "लोथल",
+        "कालीबंगन"
+      ],
+      "explanation_hi": "गुजरात, भारत में लोथल में साबरमती नदी के प्राचीन मार्ग से जुड़ा एक विशाल ज्वारीय गोदी बाड़ा था, जो उन्नत समुद्री और इंजीनियरिंग ज्ञान को दर्शाता है।"
+    },
+    {
+      "id": 2,
+      "question": "The famous 'Dancing Girl' bronze statue was discovered at which of the following Harappan sites?",
+      "options": [
+        "Mohenjo-daro",
+        "Harappa",
+        "Ropar",
+        "Chanhudaro"
+      ],
+      "correct": 0,
+      "explanation": "The 'Dancing Girl' is a masterpiece of prehistoric bronze sculpture, created using the lost-wax casting technique, and was discovered in the ruins of Mohenjo-daro in 1926.",
+      "difficulty": "Medium",
+      "tags": [
+        "Art",
+        "Mohenjo-daro"
+      ],
+      "question_hi": "प्रसिद्ध कांस्य मूर्ति 'नर्तकी' (Dancing Girl) निम्नलिखित में से किस हड़प्पा स्थल पर खोजी गई थी?",
+      "options_hi": [
+        "मोहनजोदड़ो",
+        "हड़प्पा",
+        "रोपड़",
+        "चन्हूदड़ो"
+      ],
+      "explanation_hi": "'नर्तकी' प्रागैतिहासिक कांस्य मूर्तिकला की एक उत्कृष्ट कृति है, जिसे लुप्त-मोम (lost-wax) ढलाई तकनीक का उपयोग करके बनाया गया था, और इसे 1926 में मोहनजोदड़ो के खंडहरों में खोजा गया था।"
+    },
+    {
+      "id": 3,
+      "question": "What was the main commercial crop produced and exported by the Indus Valley Civilization?",
+      "options": [
+        "Barley",
+        "Cotton",
+        "Rice",
+        "Sugarcane"
+      ],
+      "correct": 1,
+      "explanation": "The Indus people were the first in the ancient world to cultivate and spin cotton (often referred to as 'Sindon' by the Greeks), which was a major export item to Mesopotamia.",
+      "difficulty": "Medium",
+      "tags": [
+        "Agriculture",
+        "Economy"
+      ],
+      "question_hi": "सिंधु घाटी सभ्यता द्वारा उत्पादित और निर्यात की जाने वाली मुख्य व्यावसायिक फसल क्या थी?",
+      "options_hi": [
+        "जौ",
+        "कपास",
+        "चावल",
+        "गन्ना"
+      ],
+      "explanation_hi": "सिंधु घाटी के लोग प्राचीन दुनिया में कपास की खेती और कताई करने वाले पहले व्यक्ति थे (यूनानियों द्वारा इसे अक्सर 'सिंडन' कहा जाता था), जो मेसोपोटामिया को निर्यात की जाने वाली एक प्रमुख वस्तु थी।"
+    },
+    {
+      "id": 4,
+      "question": "Which animal was NOT represented in Harappan seals and art?",
+      "options": [
+        "Humped Bull",
+        "Elephant",
+        "Rhinoceros",
+        "Lion"
+      ],
+      "correct": 3,
+      "explanation": "While tigers, elephants, rhinos, and humped bulls are frequently depicted on seals (like the famous Pashupati Seal), lions were not represented in Indus Valley art. Horses were also highly controversial or absent.",
+      "difficulty": "Hard",
+      "tags": [
+        "Seals",
+        "Fauna"
+      ]
+    },
+    {
+      "id": 5,
+      "question": "Which of the following Indus Valley sites shows evidence of ploughed fields and fire altars?",
+      "options": [
+        "Banawali",
+        "Kalibangan",
+        "Surkotada",
+        "Dholavira"
+      ],
+      "correct": 1,
+      "explanation": "Kalibangan, located in Rajasthan, shows evidence of a pre-Harappan ploughed agricultural field and a series of brick platforms containing fire altars, suggesting ritualistic practices.",
+      "difficulty": "Hard",
+      "tags": [
+        "Kalibangan",
+        "Ritual"
+      ]
+    }
+  ]
+}

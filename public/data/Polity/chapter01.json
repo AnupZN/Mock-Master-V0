@@ -1,0 +1,81 @@
+{
+  "subject": "Polity",
+  "chapter": "Preamble & Salient Features",
+  "timePerQuestion": 30,
+  "positiveMarks": 2,
+  "negativeMarks": 0.50,
+  "questions": [
+    {
+      "id": 1,
+      "question": "Which amendment is known as the 'Mini-Constitution' of India?",
+      "options": [
+        "44th Amendment Act",
+        "42nd Amendment Act",
+        "24th Amendment Act",
+        "86th Amendment Act"
+      ],
+      "correct": 1,
+      "explanation": "The 42nd Amendment Act of 1976 made sweeping changes to the Constitution, including adding 'Socialist', 'Secular', and 'Integrity' to the Preamble, and introducing Fundamental Duties.",
+      "difficulty": "Easy",
+      "tags": [
+        "Amendments"
+      ],
+      "question_hi": "किस संशोधन को भारत का 'लघु-संविधान' (Mini-Constitution) कहा जाता है?",
+      "options_hi": [
+        "44वां संशोधन अधिनियम",
+        "42वां संशोधन अधिनियम",
+        "24वां संशोधन अधिनियम",
+        "86वां संशोधन अधिनियम"
+      ],
+      "explanation_hi": "1976 के 42वें संशोधन अधिनियम ने संविधान में व्यापक बदलाव किए, जिसमें प्रस्तावना में 'समाजवादी', 'धर्मनिरपेक्ष' और 'अखंडता' शब्दों को जोड़ना और मौलिक कर्तव्यों की शुरुआत करना शामिल है।"
+    },
+    {
+      "id": 2,
+      "question": "The idea of Liberty, Equality, and Fraternity in the Indian Preamble is borrowed from which country's constitution?",
+      "options": [
+        "United States",
+        "USSR",
+        "France",
+        "Ireland"
+      ],
+      "correct": 2,
+      "explanation": "These ideals of Liberty, Equality, and Fraternity were central slogans during the French Revolution (1789) and were borrowed from the French Constitution.",
+      "difficulty": "Medium",
+      "tags": [
+        "Sources"
+      ],
+      "question_hi": "भारतीय प्रस्तावना में स्वतंत्रता, समता और बंधुत्व का विचार किस देश के संविधान से लिया गया है?",
+      "options_hi": [
+        "संयुक्त राज्य अमेरिका",
+        "सोवियत संघ (USSR)",
+        "फ्रांस",
+        "आयरलैंड"
+      ],
+      "explanation_hi": "स्वतंत्रता, समता और बंधुत्व के ये आदर्श फ्रांसीसी क्रांति (1789) के दौरान मुख्य नारे थे और इन्हें फ्रांसीसी संविधान से लिया गया था।"
+    },
+    {
+      "id": 3,
+      "question": "The Preamble is non-justiciable in nature. What does this mean?",
+      "options": [
+        "It cannot be amended under any circumstance",
+        "Its provisions are not enforceable in a court of law",
+        "It is superior to the Fundamental Rights",
+        "It was not passed by the Constituent Assembly"
+      ],
+      "correct": 1,
+      "explanation": "Non-justiciable means that courts cannot force the government to implement or adhere strictly to the general sentiments in the Preamble directly, unlike Fundamental Rights.",
+      "difficulty": "Medium",
+      "tags": [
+        "Judiciary"
+      ],
+      "question_hi": "प्रस्तावना प्रकृति में गैर-न्यायोचित (non-justiciable) है। इसका क्या अर्थ है?",
+      "options_hi": [
+        "इसे किसी भी परिस्थिति में संशोधित नहीं किया जा सकता है",
+        "इसके प्रावधान किसी भी अदालत में लागू करने योग्य नहीं हैं",
+        "यह मौलिक अधिकारों से ऊपर है",
+        "इसे संविधान सभा द्वारा पारित नहीं किया गया था"
+      ],
+      "explanation_hi": "गैर-न्यायोचित का अर्थ है कि अदालतें सरकार को मौलिक अधिकारों की तरह प्रस्तावना की सामान्य भावनाओं को सीधे लागू करने के लिए मजबूर नहीं कर सकती हैं।"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "subject": "Geography",
+  "chapter": "Physiography of India",
+  "timePerQuestion": 30,
+  "positiveMarks": 2,
+  "negativeMarks": 0.50,
+  "questions": [
+    {
+      "id": 1,
+      "question": "Which of the following is the highest peak in the Western Ghats and South India?",
+      "options": [
+        "Doda Betta",
+        "Mahendragiri",
+        "Anamudi",
+        "Kalsubai"
+      ],
+      "correct": 2,
+      "explanation": "Anamudi, standing at 2,695 meters, is located in the Eravikulam National Park in Kerala. It is the highest peak in both the Western Ghats and South India.",
+      "difficulty": "Easy",
+      "tags": [
+        "Peaks",
+        "Western Ghats"
+      ]
+    },
+    {
+      "id": 2,
+      "question": "The famous cold desert region 'Ladakh' lies between which two mountain ranges?",
+      "options": [
+        "Karakoram and Ladakh ranges",
+        "Ladakh and Zanskar ranges",
+        "Zanskar and Great Himalayan ranges",
+        "Pir Panjal and Dhauladhar ranges"
+      ],
+      "correct": 1,
+      "explanation": "The cold desert of Ladakh is positioned between the Ladakh range to the north and the Zanskar range to the south.",
+      "difficulty": "Hard",
+      "tags": [
+        "Himalayas",
+        "Ranges"
+      ]
+    },
+    {
+      "id": 3,
+      "question": "The 'Duncan Passage' separates which of the following islands?",
+      "options": [
+        "Minicoy and Amindivi",
+        "Rutland Island (South Andaman) and Little Andaman",
+        "Car Nicobar and Great Nicobar",
+        "Lakshadweep and Maldives"
+      ],
+      "correct": 1,
+      "explanation": "The Duncan Passage is a strait in the Indian Ocean, about 48 km wide, that separates Rutland Island (part of South Andaman) and Little Andaman to the south.",
+      "difficulty": "Hard",
+      "tags": [
+        "Islands",
+        "Passages"
+      ]
+    }
+  ]
+}

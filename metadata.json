@@ -1,0 +1,6 @@
+{
+  "name": "Modular Exam App",
+  "description": "A premium, modular exam preparation web application with dynamic subject loading, comprehensive practice modes, and complete exam metrics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
