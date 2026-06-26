@@ -768,6 +768,8 @@ export default function App() {
     );
   };
 
+  const resolvedUserName = currentUser ? (currentUser.displayName || settings.userName || "User") : "Guest";
+
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
       {/* Hide standard layout frame if taking active Exam */}
@@ -905,8 +907,7 @@ export default function App() {
                     {/* Profile avatar & metadata */}
                     <div className="flex items-center gap-3">
                       <div className="text-right hidden lg:block">
-                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{currentUser.displayName || settings.userName || "Dr. Sarah Chen"}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{settings.userTitle || "Cloud Member"}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{resolvedUserName}</p>
                       </div>
                       {currentUser.photoURL ? (
                         <img
@@ -918,7 +919,7 @@ export default function App() {
                       ) : (
                         <div className={`w-10 h-10 rounded-full ${themeClass.accentBg} border-2 border-white dark:border-slate-800 shadow-sm flex items-center justify-center ${themeClass.accentText} font-bold overflow-hidden select-none`}>
                           {(() => {
-                            const name = currentUser.displayName || settings.userName || "User";
+                            const name = resolvedUserName;
                             const parts = name.trim().split(/\s+/);
                             const filteredParts = parts.filter(p => !/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|md\.?)$/i.test(p));
                             const activeParts = filteredParts.length > 0 ? filteredParts : parts;
@@ -954,20 +955,10 @@ export default function App() {
 
                     <div className="flex items-center gap-3">
                       <div className="text-right hidden lg:block">
-                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{settings.userName || "Dr. Sarah Chen"}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{settings.userTitle || "Aspirant Level 14"}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">Guest</p>
                       </div>
                       <div className={`w-10 h-10 rounded-full ${themeClass.accentBg} border-2 border-white dark:border-slate-800 shadow-sm flex items-center justify-center ${themeClass.accentText} font-bold overflow-hidden select-none`}>
-                        {(() => {
-                          const name = settings.userName || "Dr. Sarah Chen";
-                          const parts = name.trim().split(/\s+/);
-                          const filteredParts = parts.filter(p => !/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|md\.?)$/i.test(p));
-                          const activeParts = filteredParts.length > 0 ? filteredParts : parts;
-                          if (activeParts.length === 1) {
-                            return activeParts[0].substring(0, 2).toUpperCase();
-                          }
-                          return (activeParts[0][0] + activeParts[activeParts.length - 1][0]).toUpperCase();
-                        })()}
+                        G
                       </div>
                     </div>
                   </div>
@@ -1143,7 +1134,7 @@ export default function App() {
                       history={history}
                       bookmarks={bookmarks}
                       dailyTarget={settings.dailyTarget}
-                      userName={settings.userName}
+                      userName={resolvedUserName}
                       theme={settings.theme}
                       onNavigate={(view, data) => {
                         if (view === "chapters" && data?.subjectId) {

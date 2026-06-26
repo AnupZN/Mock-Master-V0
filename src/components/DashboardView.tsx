@@ -131,7 +131,7 @@ export default function DashboardView({
         <div className="absolute -right-4 -bottom-4 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
         <div className="relative z-10 space-y-2 max-w-xl">
           <h1 className="text-3xl font-black tracking-tight font-sans">
-            Welcome back, {userName || "Dr. Sarah Chen"}!
+            Welcome back, {userName || "Guest"}!
           </h1>
           <p className="text-white/80 text-sm font-sans">
             Track your daily goals, practice chapter-wise question banks, and improve your accuracy with our modular preparation portal.

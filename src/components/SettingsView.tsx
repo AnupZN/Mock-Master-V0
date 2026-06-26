@@ -54,14 +54,6 @@ export default function SettingsView({
     onUpdateSettings({ ...settings, dailyTarget: parseInt(e.target.value) });
   };
 
-  const handleChangeName = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpdateSettings({ ...settings, userName: e.target.value });
-  };
-
-  const handleChangeTitle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpdateSettings({ ...settings, userTitle: e.target.value });
-  };
-
   const handleExport = () => {
     const dataStr = exportUserData();
     const blob = new Blob([dataStr], { type: "application/json" });
@@ -123,36 +115,6 @@ export default function SettingsView({
 
       {/* Main Settings Panel */}
       <div className="bg-white dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm space-y-6">
-        {/* Profile Settings Section */}
-        <div className="space-y-4 pb-6 border-b border-slate-100 dark:border-slate-800/40">
-          <div className="space-y-0.5">
-            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">Aspirant Profile</h3>
-            <p className="text-xs text-slate-400">Personalize your name and display subtitle on the main dashboard</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Display Name</label>
-              <input
-                type="text"
-                value={settings.userName || ""}
-                onChange={handleChangeName}
-                placeholder="Dr. Sarah Chen"
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-800 dark:text-slate-100"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Profile Subtitle</label>
-              <input
-                type="text"
-                value={settings.userTitle || ""}
-                onChange={handleChangeTitle}
-                placeholder="Aspirant Level 14"
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-800 dark:text-slate-100"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Dark Mode toggle row */}
         <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/40 pb-4">
           <div className="space-y-0.5">
