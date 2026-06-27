@@ -105,7 +105,85 @@ Here is the exact schema and property descriptions:
 
 ---
 
-## 🌐 Part 2: Best Free Platforms for ~1,000 Monthly Users
+### 📊 How to Add Tables to Questions
+
+The application supports robust, elegant table rendering for both English and Hindi. You can define tables in **two different ways** depending on your preference:
+
+#### **Method 1: Structured JSON Fields (Recommended)**
+You can add explicit `"table"` and `"table_hi"` objects directly inside any question object in the JSON file. This is the cleanest and most reliable format.
+
+```json
+{
+  "id": 4,
+  "question": "Match the following Mauryan administrative officers with their respective departments:",
+  "table": {
+    "headers": ["Administrative Officer", "Department / Role"],
+    "rows": [
+      ["1. Samaharta", "Chief Revenue Collector"],
+      ["2. Sannidhata", "Chief Treasury Officer"],
+      ["3. Akshapataladhyaksha", "Accountant General"],
+      ["4. Sitadhyaksha", "Superintendent of Crown Lands"]
+    ]
+  },
+  "options": [
+    "1 - Revenue, 2 - Treasury, 3 - Accounts, 4 - Agriculture",
+    "1 - Treasury, 2 - Revenue, 3 - Agriculture, 4 - Accounts"
+  ],
+  "correct": 0,
+  "explanation": "In Mauryan administration, the Samaharta was responsible for revenue collection, Sannidhata kept the treasury...",
+  "difficulty": "Medium",
+  "tags": ["Administration", "Mauryan Officers"],
+  
+  "question_hi": "निम्नलिखित मौर्य प्रशासनिक अधिकारियों को उनके संबंधित विभागों के साथ सुमेलित करें:",
+  "table_hi": {
+    "headers": ["प्रशासनिक अधिकारी", "विभाग / भूमिका"],
+    "rows": [
+      ["1. समाहर्ता", "मुख्य राजस्व संग्राहक"],
+      ["2. सन्निधाता", "मुख्य कोषाध्यक्ष"],
+      ["3. अक्षपटलाध्यक्ष", "महालेखाकार"],
+      ["4. सीताध्यक्ष", "राजकीय कृषि भूमि के अधीक्षक"]
+    ]
+  },
+  "options_hi": [
+    "1 - राजस्व, 2 - कोष, 3 - लेखा, 4 - कृषि",
+    "1 - कोष, 2 - राजस्व, 3 - कृषि, 4 - लेखा"
+  ],
+  "explanation_hi": "मौर्य प्रशासन में, समाहर्ता राजस्व संग्रह के लिए जिम्मेदार था..."
+}
+```
+
+#### **Method 2: Markdown Pipe Syntax (Auto-Parsed)**
+If you prefer writing inline Markdown tables or copy-pasting tables, you can write standard markdown pipe table syntax directly inside the `"question"` or `"question_hi"` strings. The system will **automatically detect, parse, and render** it into a fully responsive HTML styled table:
+
+```json
+{
+  "id": 5,
+  "question": "Match the modern sites with their excavations using the table below:\n\n| Harappan Site | Key Excavation / Find |\n|---|---|\n| Mohenjo-daro | Great Bath & Dancing Girl |\n| Harappa | Row of six granaries |\n| Lothal | Dockyard |\n| Kalibangan | Furrowed land & Fire altars |",
+  "options": [
+    "A - Mohenjo-daro, B - Harappa, C - Lothal, D - Kalibangan",
+    "A - Harappa, B - Mohenjo-daro, C - Kalibangan, D - Lothal"
+  ],
+  "correct": 0,
+  "explanation": "These correspond to the famous key findings of each archaeological site."
+}
+```
+
+---
+
+## 🧭 Part 2: Professional Last Question Navigation
+
+To ensure a top-tier user experience during exams, the application implements a professional **Exam Submission Flow** upon completing the last question:
+
+1. When clicking **"Save & Next"** on the final question of a chapter, instead of immediately ending or silently staying, a beautiful, focused modal will display.
+2. The modal presents three direct choices:
+   * **Submit Exam**: Instantly submit the answers and open the detailed score review dashboard.
+   * **Go to 1st Question**: Seamlessly wrap back to the first question to review all answers from the beginning.
+   * **Keep Reviewing (Stay)**: Close the modal and remain on the final question to continue checking details.
+3. The modal also provides a live summarized breakdown showing the total number of **Answered** vs **Unanswered** questions so you can make an informed decision before submitting.
+
+---
+
+## 🌐 Part 3: Best Free Platforms for ~1,000 Monthly Users
 
 Since this application compiles to a static Client-Side Single Page Application (SPA), all heavy processing runs inside the user's browser, and data is synced directly to Firebase. As a result, the web server only serves static files (HTML, JS, CSS, and JSONs). 
 
@@ -120,7 +198,7 @@ For **1,000 monthly users**, any of the following platforms are **100% free**, r
 
 ---
 
-## 🚀 Part 3: Deploying the App to Vercel
+## 🚀 Part 4: Deploying the App to Vercel
 
 Vercel is the recommended choice because of its seamless integration with Vite and automatic deployments on pushing updates.
 
@@ -156,7 +234,7 @@ Vercel will download the code, install dependencies, compile the Vite bundle, an
 
 ---
 
-## 🛡️ Part 4: Firebase Configuration on Vercel
+## 🛡️ Part 5: Firebase Configuration on Vercel
 
 Your Firebase client configuration details (database endpoints, app ID) are read from `/firebase-applet-config.json` at build time. Since these client parameters are not server secrets, keeping this file in your Git repository is **fully safe** and standard practice.
 
