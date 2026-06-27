@@ -840,11 +840,9 @@ export default function App() {
             onToggleBookmark={handleToggleBookmark}
             onSubmitExam={handleSubmitExam}
             onExitExam={() => {
-              if (confirm("Exit active exam? Your elapsed time and progress will not be saved.")) {
-                setActiveSession(null);
-                clearResumableSession();
-                setCurrentView("dashboard");
-              }
+              setActiveSession(null);
+              clearResumableSession();
+              setCurrentView("dashboard");
             }}
           />
         </div>

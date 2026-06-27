@@ -71,6 +71,7 @@ export default function ExamView({
   const [showShortcutHelp, setShowShortcutHelp] = useState<boolean>(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState<boolean>(false);
   const [showLastQuestionModal, setShowLastQuestionModal] = useState<boolean>(false);
+  const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
   
   // Pre-Test instructions panel setup
   const [showPreTestPanel, setShowPreTestPanel] = useState<boolean>(true);
@@ -114,7 +115,7 @@ export default function ExamView({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore shortcuts if confirmation modal is active
-      if (showSubmitConfirm || showShortcutHelp || showLastQuestionModal) return;
+      if (showSubmitConfirm || showShortcutHelp || showLastQuestionModal || showExitConfirm) return;
 
       const key = e.key.toLowerCase();
       
@@ -194,6 +195,14 @@ export default function ExamView({
       delete updated[currentQuestion.id];
       return updated;
     });
+  };
+
+  const handleExitRequest = () => {
+    if (showPreTestPanel) {
+      onExitExam();
+    } else {
+      setShowExitConfirm(true);
+    }
   };
 
   const handleSaveAndNext = () => {
@@ -372,12 +381,14 @@ export default function ExamView({
           </button>
 
           {/* Mobile menu trigger */}
-          <button
-            onClick={() => setIsPaletteOpen(true)}
-            className="md:hidden p-1.5 bg-slate-900/40 hover:bg-slate-700 rounded-xl border border-slate-700/60 transition cursor-pointer"
-          >
-            <Menu size={14} />
-          </button>
+          {!showPreTestPanel && (
+            <button
+              onClick={() => setIsPaletteOpen(true)}
+              className="lg:hidden p-1.5 bg-slate-900/40 hover:bg-slate-700 rounded-xl border border-slate-700/60 transition cursor-pointer"
+            >
+              <Menu size={14} />
+            </button>
+          )}
         </div>
       </header>
 
@@ -486,7 +497,7 @@ export default function ExamView({
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row items-center gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
                 <button
-                  onClick={onExitExam}
+                  onClick={handleExitRequest}
                   className="w-full sm:w-auto py-3.5 px-6 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl cursor-pointer transition text-center"
                 >
                   Exit Exam Portal
@@ -640,19 +651,19 @@ export default function ExamView({
               </div>
 
               {/* Bottom Control Bar */}
-              <footer className="max-w-3xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-800 pt-5 mt-auto">
+              <footer className="max-w-3xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-3.5 border-t border-slate-200 dark:border-slate-800 pt-5 mt-auto flex-wrap sm:flex-nowrap">
                 {/* Left side actions */}
-                <div className="flex gap-2 w-full sm:w-auto">
+                <div className="flex gap-2 w-full sm:w-auto shrink-0">
                   <button
                     onClick={handleMarkForReview}
-                    className="flex-1 sm:flex-none py-2.5 px-4 bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-950 hover:bg-purple-100 text-xs font-extrabold rounded-xl transition cursor-pointer"
+                    className="flex-1 sm:flex-none py-2.5 px-3 sm:px-4 bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-950 hover:bg-purple-100 text-[11px] sm:text-xs font-extrabold rounded-xl transition cursor-pointer text-center"
                   >
                     Mark For Review & Next
                   </button>
                   <button
                     onClick={handleClearResponse}
                     disabled={selectedOption === null}
-                    className={`flex-1 sm:flex-none py-2.5 px-4 text-xs font-extrabold rounded-xl transition cursor-pointer border ${
+                    className={`flex-1 sm:flex-none py-2.5 px-3 sm:px-4 text-[11px] sm:text-xs font-extrabold rounded-xl transition cursor-pointer border ${
                       selectedOption !== null
                         ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
                         : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-100 dark:border-slate-800/20 cursor-not-allowed"
@@ -663,11 +674,11 @@ export default function ExamView({
                 </div>
 
                 {/* Right side actions */}
-                <div className="flex gap-2 w-full sm:w-auto justify-end">
+                <div className="flex gap-2 w-full sm:w-auto justify-end shrink-0">
                   <button
                     onClick={handlePrevious}
                     disabled={currentIndex === 0}
-                    className={`py-2.5 px-4 text-xs font-extrabold rounded-xl border transition cursor-pointer flex items-center gap-1 ${
+                    className={`py-2.5 px-3 sm:px-4 text-[11px] sm:text-xs font-extrabold rounded-xl border transition cursor-pointer flex items-center gap-1 ${
                       currentIndex > 0
                         ? "bg-white dark:bg-slate-900/30 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100"
                         : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-100 dark:border-slate-800/20 cursor-not-allowed"
@@ -678,7 +689,7 @@ export default function ExamView({
                   </button>
                   <button
                     onClick={handleSaveAndNext}
-                    className={`flex-1 sm:flex-none py-2.5 px-5 ${themeClass.primaryBg} hover:${themeClass.primaryHoverBg} text-white text-xs font-extrabold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-sm ${themeClass.shadowMd}`}
+                    className={`flex-1 sm:flex-none py-2.5 px-4 sm:px-5 ${themeClass.primaryBg} hover:${themeClass.primaryHoverBg} text-white text-[11px] sm:text-xs font-extrabold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-sm ${themeClass.shadowMd}`}
                   >
                     <span>Save & Next</span>
                     <ChevronRight size={14} />
@@ -688,7 +699,7 @@ export default function ExamView({
             </div>
 
             {/* Right Side: SSC Candidate & Palette Desktop Panel */}
-            <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shrink-0 select-none">
+            <aside className="hidden lg:flex flex-col w-72 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shrink-0 select-none">
               {/* Candidate Bio block */}
               <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
                 <div className={`w-12 h-12 rounded-2xl ${themeClass.accentBg} ${themeClass.accentText} flex items-center justify-center`}>
@@ -764,7 +775,7 @@ export default function ExamView({
                   Submit Exam
                 </button>
                 <button
-                  onClick={onExitExam}
+                  onClick={handleExitRequest}
                   className="w-full py-2.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 hover:text-rose-600 hover:bg-rose-50/40 dark:hover:bg-rose-950/20 rounded-xl transition cursor-pointer"
                 >
                   Exit Portal
@@ -882,7 +893,7 @@ export default function ExamView({
               <button
                 onClick={() => {
                   setIsPaletteOpen(false);
-                  onExitExam();
+                  handleExitRequest();
                 }}
                 className="w-full py-2.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 text-center cursor-pointer"
               >
@@ -981,6 +992,46 @@ export default function ExamView({
                 className={`py-3 px-4 ${themeClass.primaryBg} hover:${themeClass.primaryHoverBg} text-white font-bold text-xs rounded-xl cursor-pointer shadow-md ${themeClass.shadowMd}`}
               >
                 Confirm Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exit Confirmation Modal */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-500 flex items-center justify-center mx-auto">
+              <AlertCircle size={24} />
+            </div>
+            
+            <div className="text-center space-y-1.5">
+              <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">
+                {language === "hi" ? "परीक्षा से बाहर निकलें?" : "Exit Exam Portal?"}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                {language === "hi" 
+                  ? "क्या आप वाकई परीक्षा से बाहर निकलना चाहते हैं? आपकी प्रगति और बीता हुआ समय सहेजा नहीं जाएगा।" 
+                  : "Are you sure you want to exit the exam? Your elapsed time and progress in this session will not be saved."}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                className="py-3 px-4 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-100 cursor-pointer border border-slate-100 dark:border-slate-800 transition"
+              >
+                {language === "hi" ? "वापस जाएं" : "Cancel"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  onExitExam();
+                }}
+                className="py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md shadow-rose-600/10 transition"
+              >
+                {language === "hi" ? "बाहर निकलें" : "Exit Exam"}
               </button>
             </div>
           </div>
