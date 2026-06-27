@@ -79,6 +79,49 @@
         "भास"
       ],
       "explanation_hi": "कौटिल्य (जिन्हें चाणक्य या विष्णुगुप्त के नाम से भी जाना जाता है) चंद्रगुप्त मौर्य के प्रधानमंत्री और गुरु थे, और वे अर्थशास्त्र के पारंपरिक लेखक हैं।"
+    },
+    {
+      "id": 4,
+      "question": "Match the following Mauryan administrative officers with their respective departments using the table below, then identify the correct pair of functions:",
+      "table": {
+        "headers": ["Administrative Officer", "Department / Role"],
+        "rows": [
+          ["1. Samaharta", "Chief Revenue Collector"],
+          ["2. Sannidhata", "Chief Treasury Officer (Treasurer)"],
+          ["3. Akshapataladhyaksha", "Accountant General"],
+          ["4. Sitadhyaksha", "Superintendent of Crown Lands / Agriculture"]
+        ]
+      },
+      "options": [
+        "1 - Revenue, 2 - Treasury, 3 - Accounts, 4 - Agriculture",
+        "1 - Treasury, 2 - Revenue, 3 - Agriculture, 4 - Accounts",
+        "1 - Accounts, 2 - Agriculture, 3 - Revenue, 4 - Treasury",
+        "1 - Agriculture, 2 - Accounts, 3 - Treasury, 4 - Revenue"
+      ],
+      "correct": 0,
+      "explanation": "In Mauryan administration, the Samaharta was responsible for revenue collection, the Sannidhata kept the treasury, the Akshapataladhyaksha maintained accounts, and the Sitadhyaksha managed state agriculture.",
+      "difficulty": "Medium",
+      "tags": [
+        "Administration",
+        "Mauryan Officers"
+      ],
+      "question_hi": "नीचे दी गई तालिका का उपयोग करके निम्नलिखित मौर्य प्रशासनिक अधिकारियों को उनके संबंधित विभागों के साथ सुमेलित करें, फिर कार्यों के सही युग्म की पहचान करें:",
+      "table_hi": {
+        "headers": ["प्रशासनिक अधिकारी", "विभाग / भूमिका"],
+        "rows": [
+          ["1. समाहर्ता", "मुख्य राजस्व संग्राहक"],
+          ["2. सन्निधाता", "मुख्य कोषाध्यक्ष (कोषाधिकारी)"],
+          ["3. अक्षपटलाध्यक्ष", "महालेखाकार"],
+          ["4. सीताध्यक्ष", "राजकीय कृषि भूमि के अधीक्षक"]
+        ]
+      },
+      "options_hi": [
+        "1 - राजस्व, 2 - कोष, 3 - लेखा, 4 - कृषि",
+        "1 - कोष, 2 - राजस्व, 3 - कृषि, 4 - लेखा",
+        "1 - लेखा, 2 - कृषि, 3 - राजस्व, 4 - कोष",
+        "1 - कृषि, 2 - लेखा, 3 - कोष, 4 - राजस्व"
+      ],
+      "explanation_hi": "मौर्य प्रशासन में, समाहर्ता राजस्व संग्रह के लिए जिम्मेदार था, सन्निधाता खजाने की देखभाल करता था, अक्षपटलाध्यक्ष खातों का रख-रखाव करता था, और सीताध्यक्ष राजकीय कृषि का प्रबंधन करता था।"
     }
   ]
 }

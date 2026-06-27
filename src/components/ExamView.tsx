@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Question, ExamSession, Bookmark as BookmarkType } from "../types";
 import { formatTime } from "../utils";
 import { getThemeStyles } from "../utils/theme";
+import QuestionContent from "./QuestionContent";
 
 interface ExamViewProps {
   session: ExamSession;
@@ -69,29 +70,11 @@ export default function ExamView({
   const [isPaletteOpen, setIsPaletteOpen] = useState<boolean>(false); // mobile palette drawer
   const [showShortcutHelp, setShowShortcutHelp] = useState<boolean>(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState<boolean>(false);
+  const [showLastQuestionModal, setShowLastQuestionModal] = useState<boolean>(false);
   
   // Pre-Test instructions panel setup
   const [showPreTestPanel, setShowPreTestPanel] = useState<boolean>(true);
   const [language, setLanguage] = useState<"en" | "hi">("en");
-  const [showLastQuestionToast, setShowLastQuestionToast] = useState<boolean>(false);
-
-  const lastQuestionMsg = {
-    en: {
-      title: "Final Question Reached",
-      desc: "You have reached the last question of the exam. You can review your answers, go back to previous questions, or click 'Submit Exam' when you are done.",
-    },
-    hi: {
-      title: "अंतिम प्रश्न पर पहुंचे",
-      desc: "आप परीक्षा के अंतिम प्रश्न पर पहुँच गए हैं। आप अपने उत्तरों की समीक्षा कर सकते हैं, पिछले प्रश्नों पर वापस जा सकते हैं, या पूरा होने पर 'परीक्षा सबमिट करें' पर क्लिक कर सकते हैं।",
-    }
-  };
-
-  // Dismiss the toast if we navigate away from the last question
-  useEffect(() => {
-    if (currentIndex !== questions.length - 1) {
-      setShowLastQuestionToast(false);
-    }
-  }, [currentIndex, questions.length]);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -131,7 +114,7 @@ export default function ExamView({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore shortcuts if confirmation modal is active
-      if (showSubmitConfirm || showShortcutHelp) return;
+      if (showSubmitConfirm || showShortcutHelp || showLastQuestionModal) return;
 
       const key = e.key.toLowerCase();
       
@@ -233,11 +216,7 @@ export default function ExamView({
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else if (currentIndex === questions.length - 1) {
-      // Trigger toast only when they click "Save & Next" on the last question
-      setShowLastQuestionToast(true);
-      const timer = setTimeout(() => {
-        setShowLastQuestionToast(false);
-      }, 5000);
+      setShowLastQuestionModal(true);
     }
   };
 
@@ -613,11 +592,11 @@ export default function ExamView({
                     )}
                   </div>
 
-                  <h2 className="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 font-sans leading-relaxed">
-                    {language === "hi" && currentQuestion.question_hi
-                      ? currentQuestion.question_hi
-                      : currentQuestion.question}
-                  </h2>
+                  <QuestionContent
+                    question={currentQuestion}
+                    language={language}
+                    themeClass={themeClass}
+                  />
                 </div>
 
                 {/* Options Layout */}
@@ -1008,37 +987,73 @@ export default function ExamView({
         </div>
       )}
 
-      {/* Floating Last Question Toast Notification */}
-      <AnimatePresence>
-        {showLastQuestionToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className={`fixed bottom-6 right-6 z-50 max-w-sm w-[calc(100vw-3rem)] ${themeClass.primaryBg} text-white p-4 rounded-2xl shadow-2xl border border-white/20 flex gap-3 animate-fade-in`}
-            id="last-question-toast"
-          >
-            <div className="w-10 h-10 rounded-xl bg-white/10 dark:bg-white/5 flex items-center justify-center shrink-0 text-white">
-              <AlertCircle size={20} className="animate-bounce" />
+      {/* Last Question Action Choice Modal */}
+      {showLastQuestionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className={`w-12 h-12 rounded-2xl ${themeClass.lightBg} ${themeClass.primaryText} flex items-center justify-center mx-auto`}>
+              <HelpCircle size={24} />
             </div>
-            <div className="flex-1 space-y-1">
-              <h4 className="text-xs font-black tracking-wide uppercase">
-                {language === "hi" ? lastQuestionMsg.hi.title : lastQuestionMsg.en.title}
-              </h4>
-              <p className="text-[11px] text-white/85 leading-relaxed font-medium">
-                {language === "hi" ? lastQuestionMsg.hi.desc : lastQuestionMsg.en.desc}
+            
+            <div className="text-center space-y-1.5">
+              <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">
+                {language === "hi" ? "अंतिम प्रश्न पूर्ण!" : "Final Question Completed!"}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                {language === "hi" 
+                  ? "आप परीक्षा के अंतिम प्रश्न पर पहुँच चुके हैं। आप क्या करना चाहते हैं?" 
+                  : "You have reached the end of the exam. What would you like to do next?"}
               </p>
             </div>
-            <button
-              onClick={() => setShowLastQuestionToast(false)}
-              className="p-1 hover:bg-white/15 dark:hover:bg-white/10 rounded-lg h-7 w-7 flex items-center justify-center shrink-0 cursor-pointer self-start text-white/70 hover:text-white transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+            {/* Quick stats review */}
+            <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl text-[11px] font-bold font-mono text-center">
+              <div className="bg-white dark:bg-slate-900/50 p-2 rounded-xl">
+                <p className="text-slate-400 uppercase text-[9px] mb-0.5">
+                  {language === "hi" ? "उत्तर दिए गए" : "Answered"}
+                </p>
+                <p className="text-emerald-500 font-black text-sm">{paletteStats.answered + paletteStats.markedAnswered}</p>
+              </div>
+              <div className="bg-white dark:bg-slate-900/50 p-2 rounded-xl">
+                <p className="text-slate-400 uppercase text-[9px] mb-0.5">
+                  {language === "hi" ? "बिना उत्तर के" : "Unanswered"}
+                </p>
+                <p className="text-rose-500 font-black text-sm">{questions.length - (paletteStats.answered + paletteStats.markedAnswered)}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setShowLastQuestionModal(false);
+                  handleSubmit();
+                }}
+                className={`w-full py-3 ${themeClass.primaryBg} hover:${themeClass.primaryHoverBg} text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all flex items-center justify-center gap-1.5`}
+              >
+                <span>{language === "hi" ? "परीक्षा सबमिट करें" : "Submit Exam"}</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowLastQuestionModal(false);
+                  handleJumpToQuestion(0);
+                }}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl cursor-pointer transition border border-slate-200/40 dark:border-slate-700/40"
+              >
+                {language === "hi" ? "पहले प्रश्न पर जाएं" : "Go to 1st Question"}
+              </button>
+
+              <button
+                onClick={() => setShowLastQuestionModal(false)}
+                className="w-full py-2 bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold transition cursor-pointer"
+              >
+                {language === "hi" ? "समीक्षा जारी रखें (रहें)" : "Keep Reviewing (Stay)"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

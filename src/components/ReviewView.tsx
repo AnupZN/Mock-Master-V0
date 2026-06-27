@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Question, Bookmark as BookmarkType } from "../types";
 import { getThemeStyles } from "../utils/theme";
+import QuestionContent from "./QuestionContent";
 
 interface ReviewViewProps {
   questions: Question[];
@@ -257,11 +258,11 @@ export default function ReviewView({
                 </div>
 
                 {/* Question text */}
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-relaxed font-sans">
-                  {language === "hi" && currentQuestion.question_hi
-                    ? currentQuestion.question_hi
-                    : currentQuestion.question}
-                </h3>
+                <QuestionContent
+                  question={currentQuestion}
+                  language={language}
+                  themeClass={themeClass}
+                />
 
                 {/* Options list showing feedback */}
                 <div className="space-y-3">

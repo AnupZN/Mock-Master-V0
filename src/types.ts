@@ -9,6 +9,14 @@ export interface Question {
   question_hi?: string;
   options_hi?: string[];
   explanation_hi?: string;
+  table?: {
+    headers: string[];
+    rows: string[][];
+  };
+  table_hi?: {
+    headers: string[];
+    rows: string[][];
+  };
 }
 
 export interface Chapter {
