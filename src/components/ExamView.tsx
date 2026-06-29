@@ -515,8 +515,10 @@ export default function ExamView({
         ) : (
           <>
             {/* Left Side: Question Pane */}
-            <div className="flex-1 flex flex-col justify-between overflow-y-auto p-4 md:p-8 space-y-6">
-              <div className="max-w-3xl mx-auto w-full space-y-6">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+              {/* Scrollable Question Content Area */}
+              <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
+                <div className="max-w-3xl mx-auto w-full space-y-6">
                 {/* Question Subheader Info */}
                 <div className="flex items-center justify-between text-xs text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
@@ -649,51 +651,54 @@ export default function ExamView({
                   })()}
                 </div>
               </div>
+            </div>
 
               {/* Bottom Control Bar */}
-              <footer className="max-w-3xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-3.5 border-t border-slate-200 dark:border-slate-800 pt-5 mt-auto flex-wrap sm:flex-nowrap">
-                {/* Left side actions */}
-                <div className="flex gap-2 w-full sm:w-auto shrink-0">
-                  <button
-                    onClick={handleMarkForReview}
-                    className="flex-1 sm:flex-none py-2.5 px-3 sm:px-4 bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-950 hover:bg-purple-100 text-[11px] sm:text-xs font-extrabold rounded-xl transition cursor-pointer text-center"
-                  >
-                    Mark For Review & Next
-                  </button>
-                  <button
-                    onClick={handleClearResponse}
-                    disabled={selectedOption === null}
-                    className={`flex-1 sm:flex-none py-2.5 px-3 sm:px-4 text-[11px] sm:text-xs font-extrabold rounded-xl transition cursor-pointer border ${
-                      selectedOption !== null
-                        ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
-                        : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-100 dark:border-slate-800/20 cursor-not-allowed"
-                    }`}
-                  >
-                    Clear Response
-                  </button>
-                </div>
+              <footer className="w-full bg-white dark:bg-slate-900/90 dark:backdrop-blur border-t border-slate-200 dark:border-slate-800/80 py-4 px-4 md:px-8 shrink-0 z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.12)]">
+                <div className="max-w-3xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-3.5">
+                  {/* Left side actions */}
+                  <div className="flex gap-2 w-full sm:w-auto shrink-0">
+                    <button
+                      onClick={handleMarkForReview}
+                      className="flex-1 sm:flex-none py-2.5 px-3 sm:px-4 bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-950 hover:bg-purple-100 text-[11px] sm:text-xs font-extrabold rounded-xl transition cursor-pointer text-center"
+                    >
+                      Mark For Review & Next
+                    </button>
+                    <button
+                      onClick={handleClearResponse}
+                      disabled={selectedOption === null}
+                      className={`flex-1 sm:flex-none py-2.5 px-3 sm:px-4 text-[11px] sm:text-xs font-extrabold rounded-xl transition cursor-pointer border ${
+                        selectedOption !== null
+                          ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
+                          : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-100 dark:border-slate-800/20 cursor-not-allowed"
+                      }`}
+                    >
+                      Clear Response
+                    </button>
+                  </div>
 
-                {/* Right side actions */}
-                <div className="flex gap-2 w-full sm:w-auto justify-end shrink-0">
-                  <button
-                    onClick={handlePrevious}
-                    disabled={currentIndex === 0}
-                    className={`py-2.5 px-3 sm:px-4 text-[11px] sm:text-xs font-extrabold rounded-xl border transition cursor-pointer flex items-center gap-1 ${
-                      currentIndex > 0
-                        ? "bg-white dark:bg-slate-900/30 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100"
-                        : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-100 dark:border-slate-800/20 cursor-not-allowed"
-                    }`}
-                  >
-                    <ChevronLeft size={14} />
-                    <span>Previous</span>
-                  </button>
-                  <button
-                    onClick={handleSaveAndNext}
-                    className={`flex-1 sm:flex-none py-2.5 px-4 sm:px-5 ${themeClass.primaryBg} hover:${themeClass.primaryHoverBg} text-white text-[11px] sm:text-xs font-extrabold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-sm ${themeClass.shadowMd}`}
-                  >
-                    <span>Save & Next</span>
-                    <ChevronRight size={14} />
-                  </button>
+                  {/* Right side actions */}
+                  <div className="flex gap-2 w-full sm:w-auto justify-end shrink-0">
+                    <button
+                      onClick={handlePrevious}
+                      disabled={currentIndex === 0}
+                      className={`py-2.5 px-3 sm:px-4 text-[11px] sm:text-xs font-extrabold rounded-xl border transition cursor-pointer flex items-center gap-1 ${
+                        currentIndex > 0
+                          ? "bg-white dark:bg-slate-900/30 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100"
+                          : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-100 dark:border-slate-800/20 cursor-not-allowed"
+                      }`}
+                    >
+                      <ChevronLeft size={14} />
+                      <span>Previous</span>
+                    </button>
+                    <button
+                      onClick={handleSaveAndNext}
+                      className={`flex-1 sm:flex-none py-2.5 px-4 sm:px-5 ${themeClass.primaryBg} hover:${themeClass.primaryHoverBg} text-white text-[11px] sm:text-xs font-extrabold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-sm ${themeClass.shadowMd}`}
+                    >
+                      <span>Save & Next</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
                 </div>
               </footer>
             </div>

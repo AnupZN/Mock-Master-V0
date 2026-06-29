@@ -28,6 +28,7 @@ interface ReviewViewProps {
   chapterTitle?: string;
   theme?: string;
   isLoggedIn?: boolean;
+  isAdmin?: boolean;
   onToggleBookmark: (questionId: number) => void;
   onUpdateQuestion?: (updatedQuestion: Question) => void;
   onBack: () => void;
@@ -45,6 +46,7 @@ export default function ReviewView({
   chapterTitle,
   theme,
   isLoggedIn,
+  isAdmin = false,
   onToggleBookmark,
   onUpdateQuestion,
   onBack,
@@ -259,20 +261,22 @@ export default function ReviewView({
 
                   <div className="flex items-center gap-2">
                     {/* Copied indicator */}
-                    <button
-                      onClick={handleCopyQuestion}
-                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 transition"
-                      title="Copy Question Text"
-                    >
-                      {copiedId === activeQuestion.id ? (
-                        <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-bold">
-                          <Check size={12} />
-                          <span>Copied</span>
-                        </span>
-                      ) : (
-                        <Copy size={14} />
-                      )}
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={handleCopyQuestion}
+                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 transition"
+                        title="Copy Question Text"
+                      >
+                        {copiedId === activeQuestion.id ? (
+                          <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-bold">
+                            <Check size={12} />
+                            <span>Copied</span>
+                          </span>
+                        ) : (
+                          <Copy size={14} />
+                        )}
+                      </button>
+                    )}
 
                     {/* Bookmark */}
                     <button
@@ -288,7 +292,7 @@ export default function ReviewView({
                     </button>
 
                     {/* Edit Question */}
-                    {onUpdateQuestion && (
+                    {isAdmin && onUpdateQuestion && (
                       <button
                         onClick={handleOpenEdit}
                         className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition border border-transparent hover:border-slate-200/40 dark:hover:border-slate-700/50"

@@ -1423,6 +1423,7 @@ export default function App() {
                       chapterTitle={activeHistoryItem.chapterTitle}
                       theme={settings.theme}
                       isLoggedIn={!!currentUser}
+                      isAdmin={currentUser?.email === "anupanmolhansda1@gmail.com"}
                       onToggleBookmark={(qId) => handleToggleBookmark(qId)}
                       onUpdateQuestion={async (updatedQuestion) => {
                         // 1. Update in-memory active questions list so the review screen updates immediately
