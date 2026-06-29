@@ -11,7 +11,10 @@ import {
   Trash2,
   Check,
   AlertTriangle,
-  Info
+  Info,
+  Laptop,
+  Smartphone,
+  Share
 } from "lucide-react";
 import { AppSettings } from "../types";
 import { exportUserData, importUserData, clearAllProgress } from "../utils";
@@ -20,12 +23,18 @@ interface SettingsViewProps {
   settings: AppSettings;
   onUpdateSettings: (settings: AppSettings) => void;
   onClearHistoryOnly: () => void;
+  isInstallable: boolean;
+  isInstalled: boolean;
+  onInstallPWA: () => void;
 }
 
 export default function SettingsView({
   settings,
   onUpdateSettings,
   onClearHistoryOnly,
+  isInstallable,
+  isInstalled,
+  onInstallPWA,
 }: SettingsViewProps) {
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState<boolean>(false);
@@ -249,6 +258,86 @@ export default function SettingsView({
             className="w-full accent-indigo-600 cursor-ew-resize bg-slate-200 dark:bg-slate-800 h-1.5 rounded-lg"
           />
         </div>
+      </div>
+
+      {/* PWA App Installation & Offline Support Card */}
+      <div className="bg-white dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">Mobile & Desktop App</h3>
+            <p className="text-xs text-slate-400">Install the portal on your home screen or desktop dock for direct launcher access and full offline exam practice.</p>
+          </div>
+          {isInstalled ? (
+            <span className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-full">
+              <Check size={11} />
+              <span>Installed / Active</span>
+            </span>
+          ) : (
+            <span className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900 rounded-full">
+              <Info size={11} />
+              <span>Web Portal</span>
+            </span>
+          )}
+        </div>
+
+        {/* Action / Instructions */}
+        {isInstalled ? (
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/50 rounded-2xl flex items-start gap-3">
+            <Check className="text-emerald-500 shrink-0 mt-0.5" size={16} />
+            <div className="space-y-0.5">
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Running Standalone App Mode</p>
+              <p className="text-[11px] text-slate-400">You are successfully running the native app version! Subject questions, assets, and bookmarks will automatically cache so you can study completely offline without an active internet connection.</p>
+            </div>
+          </div>
+        ) : isInstallable ? (
+          <div className="space-y-3">
+            <div className="p-3.5 bg-indigo-50/40 dark:bg-indigo-950/10 border border-indigo-100/30 rounded-2xl flex items-start gap-3">
+              <Smartphone className="text-indigo-500 shrink-0 mt-0.5 animate-bounce" size={16} />
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Direct Installation Available</p>
+                <p className="text-[11px] text-slate-400">Your device supports native app installation. Clicking the button below will register the portal directly into your system app drawer or desktop launcher.</p>
+              </div>
+            </div>
+            <button
+              onClick={onInstallPWA}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/10 cursor-pointer transition duration-150"
+            >
+              <Laptop size={14} />
+              <span>Install Modular Exam App</span>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3.5">
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Manual Installation Instructions:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* iOS Safari */}
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/50 rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <Smartphone size={14} className="text-slate-500" />
+                  <span>iOS (Apple Safari)</span>
+                </div>
+                <ol className="text-[11px] text-slate-400 space-y-1 list-decimal pl-4 leading-relaxed">
+                  <li>Tap the <strong className="text-slate-500 inline-flex items-center gap-0.5 font-bold"><Share size={12} /> Share</strong> button in Safari</li>
+                  <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+                  <li>Tap <strong>Add</strong> at the top right to complete installation</li>
+                </ol>
+              </div>
+
+              {/* Android or Custom Desktop browsers */}
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/50 rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <Laptop size={14} className="text-slate-500" />
+                  <span>Android & Other Browsers</span>
+                </div>
+                <ol className="text-[11px] text-slate-400 space-y-1 list-decimal pl-4 leading-relaxed">
+                  <li>Click the <strong>three-dots icon</strong> (settings menu) in Chrome/Edge</li>
+                  <li>Select <strong>Install app...</strong> or <strong>Add to Home screen</strong></li>
+                  <li>Confirm installation to add directly to your app launcher</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Data Backup Suite (Import/Export) */}

@@ -106,6 +106,58 @@ export default function App() {
     }
   }, []);
 
+  // PWA installation states and handling
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isPWAInstalled, setIsPWAInstalled] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleBeforeInstallPrompt = (e: any) => {
+      // Prevent browser default installation banner
+      e.preventDefault();
+      // Store event to trigger manually later
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      console.log("[PWA] App installed successfully!");
+      setIsPWAInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    // Detect if already installed/standalone mode
+    if (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as any).standalone
+    ) {
+      setIsPWAInstalled(true);
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    try {
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`[PWA] User choice outcome: ${outcome}`);
+      if (outcome === "accepted") {
+        setIsPWAInstalled(true);
+        setDeferredPrompt(null);
+      }
+    } catch (err) {
+      console.error("[PWA] Error during install trigger:", err);
+    }
+  };
+
   // Persistence States
   const [settings, setSettings] = useState<AppSettings>(getAppSettings());
   const [history, setHistory] = useState<AttemptHistoryItem[]>(getAttemptHistory());
@@ -1275,6 +1327,9 @@ export default function App() {
                       settings={settings}
                       onUpdateSettings={handleUpdateSettings}
                       onClearHistoryOnly={handleClearHistoryOnly}
+                      isInstallable={!!deferredPrompt}
+                      isInstalled={isPWAInstalled}
+                      onInstallPWA={handleInstallPWA}
                     />
                   )}
                 </>
