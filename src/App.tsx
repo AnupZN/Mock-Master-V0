@@ -20,7 +20,8 @@ import {
   LogOut,
   Cloud,
   CloudOff,
-  RefreshCw
+  RefreshCw,
+  Shield
 } from "lucide-react";
 import {
   Subject,
@@ -60,6 +61,12 @@ import {
   fetchUserWrongQuestions,
   saveUserWrongQuestion,
   deleteUserWrongQuestion,
+  fetchCustomQuestions,
+  saveCustomQuestion,
+  fetchAdminManifest,
+  saveAdminManifest,
+  fetchAdminChapterData,
+  saveAdminChapterData,
   signInWithPopup,
   firebaseSignOut,
   signUpWithEmail,
@@ -75,6 +82,7 @@ import ExamView from "./components/ExamView";
 import ResultView from "./components/ResultView";
 import ReviewView from "./components/ReviewView";
 import SettingsView from "./components/SettingsView";
+import AdminDashboard from "./components/AdminDashboard";
 
 export default function App() {
   // Global States
@@ -86,7 +94,7 @@ export default function App() {
   const [activeSubject, setActiveSubject] = useState<Subject | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
 
-  // Firebase Auth & Sync states
+  // Supabase Auth & Sync states
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
@@ -163,6 +171,7 @@ export default function App() {
   const [history, setHistory] = useState<AttemptHistoryItem[]>(getAttemptHistory());
   const [bookmarks, setBookmarks] = useState<BookmarkType[]>(getBookmarks());
   const [wrongQuestions, setWrongQuestions] = useState<BookmarkType[]>(getWrongQuestions());
+  const [customQuestions, setCustomQuestions] = useState<Record<string, Question>>({});
 
   // Active Session / Review States
   const [activeSession, setActiveSession] = useState<ExamSession | null>(getResumableSession<ExamSession>());
@@ -184,23 +193,38 @@ export default function App() {
 
   // Load Manifest on Mount
   useEffect(() => {
-    fetch("/data/manifest.json")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch manifest");
-        return res.json();
-      })
-      .then((data) => {
-        setSubjects(data.subjects || []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Failed to load exam app manifest", err);
-        setError("Failed to load application index. Please make sure data files exist.");
-        setLoading(false);
-      });
+    const loadManifest = async () => {
+      try {
+        const dbManifest = await fetchAdminManifest();
+        if (dbManifest && dbManifest.subjects) {
+          setSubjects(dbManifest.subjects);
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to load admin manifest from Supabase:", err);
+      }
+
+      fetch("/data/manifest.json")
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to fetch manifest");
+          return res.json();
+        })
+        .then((data) => {
+          setSubjects(data.subjects || []);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error("Failed to load exam app manifest", err);
+          setError("Failed to load application index. Please make sure data files exist.");
+          setLoading(false);
+        });
+    };
+
+    loadManifest();
   }, []);
 
-  // Monitor auth state and sync with Firestore
+  // Monitor auth state and sync with Supabase Database
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       setCurrentUser(firebaseUser);
@@ -282,8 +306,16 @@ export default function App() {
           setWrongQuestions(mergedWrongs);
           saveWrongQuestions(mergedWrongs);
 
+          // 5. Fetch custom question overrides from Supabase
+          const dbCustoms = await fetchCustomQuestions(uid);
+          const customsMap: Record<string, Question> = {};
+          dbCustoms.forEach((cq) => {
+            customsMap[`${cq.subject_id}_${cq.chapter_id}_${cq.question_id}`] = cq.question_data;
+          });
+          setCustomQuestions(customsMap);
+
         } catch (err) {
-          console.error("Error syncing with Firebase Firestore: ", err);
+          console.error("Error syncing with Supabase: ", err);
         } finally {
           setIsSyncing(false);
         }
@@ -293,6 +325,7 @@ export default function App() {
         setHistory(getAttemptHistory());
         setBookmarks(getBookmarks());
         setWrongQuestions(getWrongQuestions());
+        setCustomQuestions({});
       }
     });
 
@@ -444,6 +477,64 @@ export default function App() {
     });
   };
 
+  // Apply any custom question overrides from Supabase
+  const applyCustomOverrides = (qs: Question[], subjectId: string, chapterId: string): Question[] => {
+    return qs.map((q) => {
+      const overrideKey = `${subjectId}_${chapterId}_${q.id}`;
+      if (customQuestions[overrideKey]) {
+        return {
+          ...q,
+          ...customQuestions[overrideKey],
+        };
+      }
+      return q;
+    });
+  };
+
+  // Load full chapter data, checking Supabase first, then falling back to static files
+  const loadChapterData = async (
+    subjectId: string,
+    chapterId: string,
+    folder: string,
+    file: string
+  ): Promise<ChapterData | null> => {
+    try {
+      const dbData = await fetchAdminChapterData(subjectId, chapterId);
+      if (dbData) {
+        return dbData as ChapterData;
+      }
+    } catch (e) {
+      console.error("Error reading admin chapter from DB, falling back to JSON:", e);
+    }
+
+    try {
+      const pathsToTry = [
+        `/data/${folder}/${file}`,
+        `/data/${folder?.toLowerCase()}/${file}`,
+        `/data/${folder ? (folder.charAt(0).toUpperCase() + folder.slice(1).toLowerCase()) : ""}/${file}`,
+        `/data/${subjectId}/${file}`,
+        `/data/${subjectId?.toLowerCase()}/${file}`,
+        `/data/${subjectId ? (subjectId.charAt(0).toUpperCase() + subjectId.slice(1).toLowerCase()) : ""}/${file}`
+      ].filter(Boolean);
+
+      const uniquePaths = Array.from(new Set(pathsToTry));
+
+      for (const path of uniquePaths) {
+        try {
+          const res = await fetch(path);
+          if (res.ok) {
+            return (await res.json()) as ChapterData;
+          }
+        } catch (err) {
+          console.warn(`Error reading static file from ${path}:`, err);
+        }
+      }
+    } catch (e) {
+      console.error(`Error reading static chapter data for ${subjectId}_${chapterId}:`, e);
+    }
+    return null;
+  };
+
   // Start regular Exam Session
   const handleStartExam = (
     chapterData: ChapterData,
@@ -456,7 +547,8 @@ export default function App() {
 
     saveLastOpened(targetSubject.id, chapterId);
 
-    let testQuestions = [...chapterData.questions];
+    // Apply custom overrides from database first
+    let testQuestions = applyCustomOverrides([...chapterData.questions], targetSubject.id, chapterId);
 
     if (options?.onlyWrong) {
       const wrongList = wrongQuestions.filter((w) => w.subjectId === targetSubject.id && w.chapterId === chapterId);
@@ -468,6 +560,9 @@ export default function App() {
       alert("No questions found matching criteria.");
       return;
     }
+
+    // Shuffle the questions order so that they appear in a unique sequence for each attempt
+    testQuestions.sort(() => Math.random() - 0.5);
 
     const totalSeconds = testQuestions.length * chapterData.timePerQuestion;
 
@@ -499,11 +594,11 @@ export default function App() {
 
       for (const subj of subjects) {
         for (const chap of subj.chapters) {
-          const res = await fetch(`/data/${subj.folder}/${chap.file}`);
-          if (res.ok) {
-            const data: ChapterData = await res.json();
+          const data = await loadChapterData(subj.id, chap.id, subj.folder, chap.file);
+          if (data) {
             loadedChapters[`${subj.id}_${chap.id}`] = data;
-            data.questions.forEach((q) => {
+            const overriddenQuestions = applyCustomOverrides(data.questions, subj.id, chap.id);
+            overriddenQuestions.forEach((q) => {
               allQs.push({ subject: subj, chapter: chap, question: q });
             });
           }
@@ -698,9 +793,8 @@ export default function App() {
       const allQs: Question[] = [];
       for (const subj of subjects) {
         for (const chap of subj.chapters) {
-          const res = await fetch(`/data/${subj.folder}/${chap.file}`);
-          if (res.ok) {
-            const data: ChapterData = await res.json();
+          const data = await loadChapterData(subj.id, chap.id, subj.folder, chap.file);
+          if (data) {
             allQs.push(...data.questions);
           }
         }
@@ -716,9 +810,8 @@ export default function App() {
         if (matchedSub) {
           const matchedChap = matchedSub.chapters.find((c) => c.id === item.chapterId);
           if (matchedChap) {
-            const res = await fetch(`/data/${matchedSub.folder}/${matchedChap.file}`);
-            if (res.ok) {
-              const data: ChapterData = await res.json();
+            const data = await loadChapterData(matchedSub.id, matchedChap.id, matchedSub.folder, matchedChap.file);
+            if (data) {
               testQuestions = data.questions;
             }
           }
@@ -752,24 +845,28 @@ export default function App() {
 
   // Launch simple revise chapter
   const handleReviseChapter = (chapterData: ChapterData) => {
-    // Direct review without taking an exam
-    const mockAnswers: Record<number, number | null> = {};
-    chapterData.questions.forEach((q) => {
-      mockAnswers[q.id] = null; // No previous selection
-    });
-
     const targetSubject = subjects.find((s) => s.name === chapterData.subject);
     if (!targetSubject) return;
+
+    const matchedChap = targetSubject.chapters.find((c) => c.title === chapterData.chapter);
+    const chapterId = matchedChap ? matchedChap.id : "chapter";
+    const testQuestions = applyCustomOverrides(chapterData.questions, targetSubject.id, chapterId);
+
+    // Direct review without taking an exam
+    const mockAnswers: Record<number, number | null> = {};
+    testQuestions.forEach((q) => {
+      mockAnswers[q.id] = null; // No previous selection
+    });
 
     setActiveHistoryItem({
       id: "study_only",
       subjectId: targetSubject.id,
-      chapterId: "study",
+      chapterId,
       subjectName: targetSubject.name,
       chapterTitle: chapterData.chapter,
       date: new Date().toISOString(),
       score: 0,
-      totalQuestions: chapterData.questions.length,
+      totalQuestions: testQuestions.length,
       correctCount: 0,
       wrongCount: 0,
       skippedCount: 0,
@@ -778,7 +875,7 @@ export default function App() {
       timeTaken: 0,
     });
 
-    setActiveQuestions(chapterData.questions);
+    setActiveQuestions(testQuestions);
     setActiveAnswers(mockAnswers);
     setCurrentView("review");
   };
@@ -818,9 +915,8 @@ export default function App() {
           }
 
           // Fetch chapter questions to search within text
-          const res = await fetch(`/data/${subj.folder}/${chap.file}`);
-          if (res.ok) {
-            const data: ChapterData = await res.json();
+          const data = await loadChapterData(subj.id, chap.id, subj.folder, chap.file);
+          if (data) {
             data.questions.forEach((q) => {
               if (
                 q.question.toLowerCase().includes(qLower) ||
@@ -926,6 +1022,8 @@ export default function App() {
               {renderSidebarItem("dashboard", "Dashboard", <LayoutDashboard size={18} />)}
               {renderSidebarItem("subjects", "Subjects", <BookOpen size={18} />)}
               {renderSidebarItem("settings", "Settings", <SettingsIcon size={18} />)}
+              {currentUser?.email === "anupanmolhansda1@gmail.com" &&
+                renderSidebarItem("admin", "Admin Zone", <Shield size={18} />)}
             </nav>
 
             {/* Resume Session block if any */}
@@ -1107,6 +1205,19 @@ export default function App() {
                 <SettingsIcon size={18} />
                 <span className="text-[9px] font-bold">Settings</span>
               </button>
+              {currentUser?.email === "anupanmolhansda1@gmail.com" && (
+                <button
+                  onClick={() => {
+                    setCurrentView("admin");
+                    setActiveSubject(null);
+                    setIsSearching(false);
+                  }}
+                  className={`flex flex-col items-center gap-1 p-2 ${currentView === "admin" ? "text-rose-500" : ""}`}
+                >
+                  <Shield size={18} />
+                  <span className="text-[9px] font-bold">Admin</span>
+                </button>
+              )}
             </nav>
 
             {/* Main Content Area */}
@@ -1311,7 +1422,34 @@ export default function App() {
                       subjectName={activeHistoryItem.subjectName}
                       chapterTitle={activeHistoryItem.chapterTitle}
                       theme={settings.theme}
+                      isLoggedIn={!!currentUser}
                       onToggleBookmark={(qId) => handleToggleBookmark(qId)}
+                      onUpdateQuestion={async (updatedQuestion) => {
+                        // 1. Update in-memory active questions list so the review screen updates immediately
+                        setActiveQuestions((prev) =>
+                          prev.map((q) => (q.id === updatedQuestion.id ? updatedQuestion : q))
+                        );
+                        // 2. Update the customQuestions state map so that it persists in-memory for this session
+                        const key = `${activeHistoryItem.subjectId}_${activeHistoryItem.chapterId}_${updatedQuestion.id}`;
+                        setCustomQuestions((prev) => ({
+                          ...prev,
+                          [key]: updatedQuestion,
+                        }));
+                        // 3. Upload to Supabase if authenticated
+                        if (currentUser) {
+                          try {
+                            await saveCustomQuestion(
+                              currentUser.uid,
+                              activeHistoryItem.subjectId,
+                              activeHistoryItem.chapterId,
+                              updatedQuestion.id,
+                              updatedQuestion
+                            );
+                          } catch (e) {
+                            console.error("Failed to save custom question override to Supabase:", e);
+                          }
+                        }
+                      }}
                       onBack={() => {
                         if (activeHistoryItem.id === "study_only") {
                           setCurrentView("chapters");
@@ -1330,6 +1468,26 @@ export default function App() {
                       isInstallable={!!deferredPrompt}
                       isInstalled={isPWAInstalled}
                       onInstallPWA={handleInstallPWA}
+                    />
+                  )}
+
+                  {currentView === "admin" && currentUser?.email === "anupanmolhansda1@gmail.com" && (
+                    <AdminDashboard
+                      initialSubjects={subjects}
+                      theme={settings.theme}
+                      onRefreshManifest={async () => {
+                        try {
+                          const dbManifest = await fetchAdminManifest();
+                          if (dbManifest && dbManifest.subjects) {
+                            setSubjects(dbManifest.subjects);
+                          }
+                        } catch (err) {
+                          console.error("Error refreshing manifest after publishing:", err);
+                        }
+                      }}
+                      onBack={() => {
+                        setCurrentView("dashboard");
+                      }}
                     />
                   )}
                 </>
@@ -1372,6 +1530,12 @@ export default function App() {
                     <div className="text-[11px] mt-1 text-slate-600 dark:text-slate-400 border-t border-red-100 dark:border-red-900/20 pt-2 leading-relaxed space-y-1">
                       <p>💡 <strong>Not registered yet?</strong> Click on the <button type="button" onClick={() => { setIsSignUpMode(true); setAuthError(""); }} className="text-indigo-600 dark:text-indigo-400 font-bold underline hover:text-indigo-800 transition">Register</button> tab above to create a new account first.</p>
                       <p>💡 <strong>Already registered?</strong> Ensure your email and password are exactly correct. If you recently signed up, check your email inbox (and spam) for a verification link if email confirmation is turned on in your Supabase project.</p>
+                    </div>
+                  )}
+                  {authError.toLowerCase().includes("email not confirmed") && (
+                    <div className="text-[11px] mt-1 text-slate-600 dark:text-slate-400 border-t border-red-100 dark:border-red-900/20 pt-2 leading-relaxed space-y-1">
+                      <p>📧 <strong>Email confirmation is required:</strong> Please check your email inbox (and spam folder) for the verification link sent by Supabase.</p>
+                      <p>🛠️ <strong>Personal/Offline use tip:</strong> If you want to bypass this requirement, log into your <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 font-bold underline">Supabase Dashboard</a>, go to <strong>Authentication &rarr; Providers &rarr; Email</strong>, and disable <strong>"Confirm email"</strong>. This will allow immediate log-in upon registration!</p>
                     </div>
                   )}
                 </div>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Subject, Chapter, ChapterData, AttemptHistoryItem, Bookmark as BookmarkType } from "../types";
 import { getThemeStyles } from "../utils/theme";
+import { fetchAdminChapterData } from "../supabase";
 
 interface ChaptersViewProps {
   subject: Subject;
@@ -48,29 +49,82 @@ export default function ChaptersView({
       setLoading(true);
       setError(null);
       const dataMap: Record<string, ChapterData> = {};
+      let anyLoaded = false;
+      let loadErrorsCount = 0;
+
       try {
         for (const chapter of subject.chapters) {
-          const filePath = `/data/${subject.folder}/${chapter.file}`;
-          const res = await fetch(filePath);
-          if (!res.ok) {
-            throw new Error(`Failed to load ${chapter.title}`);
+          let data: ChapterData | null = null;
+
+          // 1. Try fetching from Supabase first (if configured/synced)
+          try {
+            const dbData = await fetchAdminChapterData(subject.id, chapter.id);
+            if (dbData) {
+              data = dbData as ChapterData;
+            }
+          } catch (dbErr) {
+            console.error(`Error reading from Supabase for ${subject.id}_${chapter.id}:`, dbErr);
           }
-          const data: ChapterData = await res.json();
-          dataMap[chapter.id] = data;
+
+          // 2. Fall back to local file if not found or failed
+          if (!data) {
+            try {
+              const pathsToTry = [
+                `/data/${subject.folder}/${chapter.file}`,
+                `/data/${subject.folder?.toLowerCase()}/${chapter.file}`,
+                `/data/${subject.folder ? (subject.folder.charAt(0).toUpperCase() + subject.folder.slice(1).toLowerCase()) : ""}/${chapter.file}`,
+                `/data/${subject.id}/${chapter.file}`,
+                `/data/${subject.id?.toLowerCase()}/${chapter.file}`,
+                `/data/${subject.id ? (subject.id.charAt(0).toUpperCase() + subject.id.slice(1).toLowerCase()) : ""}/${chapter.file}`
+              ].filter(Boolean);
+
+              // Deduplicate paths
+              const uniquePaths = Array.from(new Set(pathsToTry));
+
+              for (const path of uniquePaths) {
+                try {
+                  const res = await fetch(path);
+                  if (res.ok) {
+                    data = (await res.json()) as ChapterData;
+                    break;
+                  } else {
+                    console.warn(`Local file not found for ${chapter.title} at ${path}`);
+                  }
+                } catch (pathErr) {
+                  console.error(`Error fetching local JSON at ${path}:`, pathErr);
+                }
+              }
+            } catch (fileErr) {
+              console.error(`Error in path-finding for local JSON for ${chapter.title}:`, fileErr);
+            }
+          }
+
+          if (data) {
+            dataMap[chapter.id] = data;
+            anyLoaded = true;
+          } else {
+            loadErrorsCount++;
+          }
         }
+
         if (active) {
           setChaptersData(dataMap);
+          
+          // If the subject has chapters defined but absolutely NONE could be loaded, show an error.
+          if (subject.chapters.length > 0 && !anyLoaded) {
+            setError("Failed to load any chapter files. Please verify data directory exists and paths are correct.");
+          }
         }
       } catch (err: any) {
-        console.error("Error loading chapter files:", err);
+        console.error("Critical error in fetchAllChapters loop:", err);
         if (active) {
-          setError("Failed to load chapter files. Please verify data directory exists and paths are correct.");
+          setError("An unexpected error occurred while loading chapters.");
         }
       } finally {
         if (active) {
           setLoading(false);
         }
-      };
+      }
     };
 
     fetchAllChapters();

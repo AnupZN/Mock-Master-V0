@@ -1,55 +1,110 @@
 # 🎓 Modular Exam Preparation App - Content Management & Deployment Guide
 
-This guide explains how to add new subjects, chapters, and practice questions to the application, and lists the best free platforms to host your app (supporting 1,000+ monthly users) along with step-by-step Vercel deployment instructions.
+This guide explains how to add new subjects, chapters, and practice questions to the application, documents our latest platform-stability updates, and details how to deploy and configure your app for production.
 
 ---
 
-## 📁 Part 1: How to Add Subjects, Chapters & Questions
+## ⚡ Latest App Updates & Resiliency Patches
 
-The application dynamically loads all subjects, chapters, and questions from static JSON files in the `/public/data/` directory. You do not need a database change or code modification to add content; simply update the JSON files!
+We have rolled out several critical stability updates to ensure smooth operation across different browsers, browser extensions, and developer previews:
 
-### 1. The Directory Structure
+1. **Robust Service Worker Resolution**: Fixed the `"The string did not match the expected pattern"` error during caching. The service worker now:
+   - Filters and intercepts only `http` and `https` protocols, ignoring local data URIs, chrome extension files, and invalid external resource request schemes.
+   - Correctly clones request/response streams (`response.clone()`) before writing to the Cache Storage API (`cache.put`) to avoid consuming the stream.
+   - Automatically bypasses Supabase authentication and database calls to guarantee smooth login flows.
+2. **Case-Insensitive Multi-Path Fallback**: Solved the `"Failed to load chapter files"` error when new subjects (such as the new Geography chapter) are added. The loader now:
+   - Attempts multiple prospective paths for both local and cloud JSON matching (e.g., lowercase folder, title-case folder, subject ID matching).
+   - Gracefully falls back between Supabase table data and static asset endpoints.
+3. **Stale-While-Revalidate Caching**: Caches core application shells and static files, serving them instantaneously for a fast offline-ready experience, while checking for updates in the background.
 
-All question banks and indices reside under `/public/data/`:
+---
+
+## 📁 Part 1: How to Upload & Manage Questions
+
+You can manage, create, and upload questions in two ways: **via the interactive Admin Dashboard** (the easiest way, which syncs directly to the cloud) or **manually via static JSON files** inside the codebase.
+
+### Method A: Via the Admin Dashboard (Recommended)
+
+The app features a fully featured **Admin Dashboard** allowing you to manage subjects, add chapters, and upload questions in bulk.
+
+#### **Step 1: Open the Admin Panel**
+1. Launch the application.
+2. Navigate to the **Admin Dashboard** (or click the Settings/Admin tab).
+3. If prompted, log in with your administrator credentials.
+
+#### **Step 2: Select or Create a Subject & Chapter**
+1. Select a subject from the left panel (or click **"New Subject"** to create a new one).
+2. Inside that subject, select an existing chapter or click **"New Chapter"** (e.g., specifying Name: `Geography`, ID: `chapter01`, File: `chapter01.json`).
+
+#### **Step 3: Click "Bulk Import Questions"**
+Click the **"Bulk Import"** button inside the question panel. The smart parser supports two powerful formats:
+
+##### **Format 1: Plain Text Blocks (AI Copy-Paste Friendly)**
+You can generate multiple questions using tools like ChatGPT or Claude, and copy-paste them directly into the editor. Separate each question block with an empty line:
 
 ```text
-public/
-└── data/
-    ├── manifest.json                 <-- Main index of all subjects and chapters
-    ├── History/                       <-- Subject folder
-    │   ├── chapter01.json            <-- Chapter file with questions
-    │   └── chapter02.json
-    ├── Polity/                        <-- Subject folder
-    │   └── chapter01.json
-    └── Geography/                     <-- Subject folder
-        └── chapter01.json
+Question: What is the primary language of the web?
+A: Python
+B: JavaScript
+C: C++
+D: Java
+Correct: B
+Explanation: JavaScript is the standard script for browser clients.
+Difficulty: Easy
+Tags: web, code, basic
+
+Question_HI: वेब की मुख्य प्रोग्रामिंग भाषा कौन सी है?
+A_HI: पायथन
+B_HI: जावास्क्रिप्ट
+C_HI: सी++
+D_HI: जावा
+Explanation_HI: ब्राउज़र क्लाइंट के लिए जावास्क्रिप्ट मानक भाषा है।
 ```
+
+##### **Format 2: Standard JSON Arrays**
+If you have structured JSON question files, paste them directly as a JSON array:
+
+```json
+[
+  {
+    "question": "What does CSS stand for?",
+    "options": ["Computer Style Sheets", "Cascading Style Sheets", "Creative Style Sheets", "Colorful Style Sheets"],
+    "correct": 1,
+    "explanation": "CSS stands for Cascading Style Sheets.",
+    "difficulty": "Easy",
+    "tags": ["css", "styling"]
+  }
+]
+```
+
+#### **Step 4: Publish to Supabase**
+After reviewing or bulk-importing the questions:
+1. Click **"Save Chapter"** to save your modifications.
+2. Click the green **"Publish to Supabase"** button at the top of the Admin Panel. 
+3. This uploads and syncs all subjects, chapters, and question pools to your live cloud database instantly!
 
 ---
 
-### 2. Step-by-Step Guide to Adding Content
+### Method B: Via Static JSON Files (Local Backup / Offline Use)
 
-#### **Step A: Register the Subject and Chapter in `manifest.json`**
-Open `/public/data/manifest.json`. This file acts as the router/index. To add a new subject or a new chapter to an existing subject, follow this schema:
+If you prefer keeping static assets inside your codebase without a database, you can manage files under `/public/data/`.
+
+#### **Step A: Register the Subject in `manifest.json`**
+Open `/public/data/manifest.json` and append your subject and chapters:
 
 ```json
 {
   "subjects": [
     {
-      "id": "history",                // Unique lowercase ID for the subject
-      "name": "History",              // Display name in the UI
-      "icon": "🏛️",                    // Any emoji to represent the subject
-      "folder": "History",            // The directory name inside /public/data/
+      "id": "geography",
+      "name": "Geography",
+      "icon": "🌍",
+      "folder": "Geography",
       "chapters": [
         {
-          "id": "chapter01",          // Unique ID for the chapter (within this subject)
-          "title": "Indus Valley Civilization", // Display title in the UI
-          "file": "chapter01.json"    // File name inside the /public/data/History/ folder
-        },
-        {
-          "id": "chapter02",
-          "title": "The Maurya Empire",
-          "file": "chapter02.json"
+          "id": "chapter01",
+          "title": "Physical Geography",
+          "file": "chapter01.json"
         }
       ]
     }
@@ -57,47 +112,25 @@ Open `/public/data/manifest.json`. This file acts as the router/index. To add a 
 }
 ```
 
-*   **To add a new Chapter:** Append a new object to the `chapters` array of the respective subject.
-*   **To add a new Subject:** Append a new subject object to the `subjects` array and create its corresponding subfolder under `/public/data/`.
-
----
-
 #### **Step B: Create the Chapter JSON File**
-Inside your subject folder (e.g., `/public/data/History/`), create the JSON file matching the `file` attribute specified in the manifest (e.g., `chapter01.json`).
-
-Here is the exact schema and property descriptions:
+Create a new file under `/public/data/Geography/chapter01.json` with the following format:
 
 ```json
 {
-  "subject": "History",                // Must match the subject name
-  "chapter": "Indus Valley Civilization", // Must match the chapter title
-  "timePerQuestion": 30,               // Standard countdown timer per question (seconds)
-  "positiveMarks": 2,                  // Score added for correct answers
-  "negativeMarks": 0.50,               // Score subtracted for wrong answers (e.g., 0.25, 0.33, 0.50)
+  "subject": "Geography",
+  "chapter": "Physical Geography",
+  "timePerQuestion": 30,
+  "positiveMarks": 2,
+  "negativeMarks": 0.50,
   "questions": [
     {
-      "id": 1,                         // 1-indexed unique question ID within this chapter
-      "question": "Which of the following Indus Valley sites is known for having a unique dockyard?",
-      "options": [
-        "Harappa",                     // Option 0
-        "Mohenjo-daro",                // Option 1
-        "Lothal",                      // Option 2
-        "Kalibangan"                   // Option 3
-      ],
-      "correct": 2,                    // 0-indexed index of correct answer (Lothal is options[2])
-      "explanation": "Lothal in Gujarat, India, had a massive tidal dockyard connected to the ancient course of the Sabarmati river, demonstrating advanced maritime and engineering knowledge.",
-      "difficulty": "Easy",            // "Easy", "Medium", or "Hard"
-      "tags": ["Lothal", "Trade"],     // Keywords for search indexing
-      
-      // OPTIONAL: Hindi translations for dual-language support
-      "question_hi": "निम्नलिखित में से कौन सा सिंधु घाटी स्थल एक अनोखे गोदी बाड़े (dockyard) के लिए जाना जाता है?",
-      "options_hi": [
-        "हड़प्पा",
-        "मोहनजोदड़ो",
-        "लोथल",
-        "कालीबंगन"
-      ],
-      "explanation_hi": "गुजरात, भारत में लोथल में साबरमती नदी के प्राचीन मार्ग से जुड़ा एक विशाल ज्वारीय गोदी बाड़ा था, जो उन्नत समुद्री और इंजीनियरिंग ज्ञान को दर्शाता है।"
+      "id": 1,
+      "question": "Which layer of the atmosphere contains the ozone layer?",
+      "options": ["Troposphere", "Stratosphere", "Mesosphere", "Thermosphere"],
+      "correct": 1,
+      "explanation": "The stratosphere contains the ozone layer, which absorbs and scatters solar ultraviolet radiation.",
+      "difficulty": "Easy",
+      "tags": ["Atmosphere", "Ozone"]
     }
   ]
 }
@@ -105,161 +138,84 @@ Here is the exact schema and property descriptions:
 
 ---
 
-### 📊 How to Add Tables to Questions
+## 📊 How to Add Tables to Questions
 
-The application supports robust, elegant table rendering for both English and Hindi. You can define tables in **two different ways** depending on your preference:
+The application renders clean, fully responsive tabular data. You can declare tables in **two ways**:
 
-#### **Method 1: Structured JSON Fields (Recommended)**
-You can add explicit `"table"` and `"table_hi"` objects directly inside any question object in the JSON file. This is the cleanest and most reliable format.
-
-```json
-{
-  "id": 4,
-  "question": "Match the following Mauryan administrative officers with their respective departments:",
-  "table": {
-    "headers": ["Administrative Officer", "Department / Role"],
-    "rows": [
-      ["1. Samaharta", "Chief Revenue Collector"],
-      ["2. Sannidhata", "Chief Treasury Officer"],
-      ["3. Akshapataladhyaksha", "Accountant General"],
-      ["4. Sitadhyaksha", "Superintendent of Crown Lands"]
-    ]
-  },
-  "options": [
-    "1 - Revenue, 2 - Treasury, 3 - Accounts, 4 - Agriculture",
-    "1 - Treasury, 2 - Revenue, 3 - Agriculture, 4 - Accounts"
-  ],
-  "correct": 0,
-  "explanation": "In Mauryan administration, the Samaharta was responsible for revenue collection, Sannidhata kept the treasury...",
-  "difficulty": "Medium",
-  "tags": ["Administration", "Mauryan Officers"],
-  
-  "question_hi": "निम्नलिखित मौर्य प्रशासनिक अधिकारियों को उनके संबंधित विभागों के साथ सुमेलित करें:",
-  "table_hi": {
-    "headers": ["प्रशासनिक अधिकारी", "विभाग / भूमिका"],
-    "rows": [
-      ["1. समाहर्ता", "मुख्य राजस्व संग्राहक"],
-      ["2. सन्निधाता", "मुख्य कोषाध्यक्ष"],
-      ["3. अक्षपटलाध्यक्ष", "महालेखाकार"],
-      ["4. सीताध्यक्ष", "राजकीय कृषि भूमि के अधीक्षक"]
-    ]
-  },
-  "options_hi": [
-    "1 - राजस्व, 2 - कोष, 3 - लेखा, 4 - कृषि",
-    "1 - कोष, 2 - राजस्व, 3 - कृषि, 4 - लेखा"
-  ],
-  "explanation_hi": "मौर्य प्रशासन में, समाहर्ता राजस्व संग्रह के लिए जिम्मेदार था..."
-}
-```
-
-#### **Method 2: Markdown Pipe Syntax (Auto-Parsed)**
-If you prefer writing inline Markdown tables or copy-pasting tables, you can write standard markdown pipe table syntax directly inside the `"question"` or `"question_hi"` strings. The system will **automatically detect, parse, and render** it into a fully responsive HTML styled table:
-
-```json
-{
-  "id": 5,
-  "question": "Match the modern sites with their excavations using the table below:\n\n| Harappan Site | Key Excavation / Find |\n|---|---|\n| Mohenjo-daro | Great Bath & Dancing Girl |\n| Harappa | Row of six granaries |\n| Lothal | Dockyard |\n| Kalibangan | Furrowed land & Fire altars |",
-  "options": [
-    "A - Mohenjo-daro, B - Harappa, C - Lothal, D - Kalibangan",
-    "A - Harappa, B - Mohenjo-daro, C - Kalibangan, D - Lothal"
-  ],
-  "correct": 0,
-  "explanation": "These correspond to the famous key findings of each archaeological site."
-}
-```
+1. **Structured JSON (Recommended)**:
+   Add a `table` (English) and/or `table_hi` (Hindi) block inside your question object:
+   ```json
+   "table": {
+     "headers": ["Country", "Capital"],
+     "rows": [
+       ["India", "New Delhi"],
+       ["Japan", "Tokyo"]
+     ]
+   }
+   ```
+2. **Markdown Pipe Tables**:
+   Write standard markdown table syntax directly within the `"question"` or `"question_hi"` strings. The parser will automatically render them beautifully:
+   ```text
+   "question": "Match the following capitals:\n\n| Country | Capital |\n|---|---|\n| India | New Delhi |\n| Japan | Tokyo |"
+   ```
 
 ---
 
 ## 🧭 Part 2: Professional Last Question Navigation
 
-To ensure a top-tier user experience during exams, the application implements a professional **Exam Submission Flow** upon completing the last question:
-
-1. When clicking **"Save & Next"** on the final question of a chapter, instead of immediately ending or silently staying, a beautiful, focused modal will display.
-2. The modal presents three direct choices:
-   * **Submit Exam**: Instantly submit the answers and open the detailed score review dashboard.
-   * **Go to 1st Question**: Seamlessly wrap back to the first question to review all answers from the beginning.
-   * **Keep Reviewing (Stay)**: Close the modal and remain on the final question to continue checking details.
-3. The modal also provides a live summarized breakdown showing the total number of **Answered** vs **Unanswered** questions so you can make an informed decision before submitting.
+When completing a practice chapter, the application displays an **Exam Submission Flow** on clicking **"Save & Next"** for the last question:
+- Displays a clean breakdown showing **Answered** versus **Unanswered** questions.
+- **Three core pathways**:
+  - **Submit Exam**: Calculates final positive and negative scores, updating your local history dashboard.
+  - **Go to 1st Question**: Wraps back to the start so you can audit your answers.
+  - **Keep Reviewing (Stay)**: Closes the modal so you can focus on the current page.
 
 ---
 
 ## 🌐 Part 3: Best Free Platforms for ~1,000 Monthly Users
 
-Since this application compiles to a static Client-Side Single Page Application (SPA), all heavy processing runs inside the user's browser, and data is synced directly to Firebase. As a result, the web server only serves static files (HTML, JS, CSS, and JSONs). 
+Since this application compiles to a static Client-Side SPA, heavy processing occurs on the client and syncs directly to Supabase. This means your hosting platform only serves lightweight static files (HTML, JS, CSS, and fallback JSONs).
 
-For **1,000 monthly users**, any of the following platforms are **100% free**, reliable, and offer lightning-fast load times:
+For **1,000 monthly users**, these hosts are **100% free**, secure, and offer global CDNs:
 
 | Platform | Free Bandwidth Limit | Build/Deploy Ease | Unique Pros |
 | :--- | :--- | :--- | :--- |
-| **Vercel** | **100 GB/month** (supports ~50k users) | 🟢 Instant (Git sync) | Best developer experience, automated preview branches. |
-| **Cloudflare Pages** | **Unlimited** bandwidth / requests | 🟢 Instant (Git sync) | Worldwide CDN edges, absolute best security and speed. |
-| **Netlify** | **100 GB/month** (supports ~50k users) | 🟢 Instant (Git sync) | Very user-friendly, excellent custom form integrations. |
-| **GitHub Pages** | **100 GB/month** soft limit | 🟡 Needs a simple workflow | Built right into your GitHub repository for convenience. |
+| **Vercel** | **100 GB/month** (~50,000 users) | 🟢 Instant (Git sync) | Seamless Vite detection, preview branches, fast deployment. |
+| **Cloudflare Pages** | **Unlimited** bandwidth / requests | 🟢 Instant (Git sync) | Ultimate global performance, free advanced DDoS protection. |
+| **Netlify** | **100 GB/month** (~50,000 users) | 🟢 Instant (Git sync) | Very user-friendly dashboard, built-in forms. |
+| **GitHub Pages** | **100 GB/month** soft limit | 🟡 Needs custom workflow | Directly integrated into your source repository. |
 
 ---
 
 ## 🚀 Part 4: Deploying the App to Vercel
 
-Vercel is the recommended choice because of its seamless integration with Vite and automatic deployments on pushing updates.
-
-### Step-by-Step Vercel Deployment
-
-#### **Step 1: Push Your Code to GitHub, GitLab, or Bitbucket**
-Make sure your project code is stored in a Git repository.
-```bash
-git init
-git add .
-git commit -m "Initialize modular exam preparation app"
-git remote add origin <your-git-repo-url>
-git branch -M main
-git push -u origin main
-```
-
-#### **Step 2: Sign Up or Log In to Vercel**
-Go to [Vercel](https://vercel.com/) and log in using your GitHub account.
-
-#### **Step 3: Import Your Project**
-1. Click the **Add New...** button in your Vercel Dashboard and select **Project**.
-2. Find your Git repository from the list and click **Import**.
-
-#### **Step 4: Configure Project Settings**
-Vercel automatically detects that your project is a **Vite** app. Verify that the settings match the following:
-*   **Framework Preset:** `Vite`
-*   **Root Directory:** `./`
-*   **Build Command:** `npm run build`
-*   **Output Directory:** `dist`
-
-#### **Step 5: Click Deploy!**
-Vercel will download the code, install dependencies, compile the Vite bundle, and deploy it to a high-speed global CDN. Within 1 minute, you will receive your live production URL (e.g., `https://your-app-name.vercel.app`).
+1. Create a GitHub repository and push your project files.
+2. Sign up on [Vercel](https://vercel.com/) and click **"Add New... Project"**.
+3. Import your Git repository.
+4. Set the build parameters (auto-detected):
+   - **Framework Preset**: `Vite`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+5. Click **Deploy!**
 
 ---
 
-## 🛡️ Part 5: Firebase Configuration on Vercel
+## 🛡️ Part 5: Supabase Setup & Environment Variables
 
-Your Firebase client configuration details (database endpoints, app ID) are read from `/firebase-applet-config.json` at build time. Since these client parameters are not server secrets, keeping this file in your Git repository is **fully safe** and standard practice.
+This application uses Supabase for user authentication (sign-up, login), saving attempt histories, and bookmark tracking.
 
-To restrict unauthorized databases requests, ensure your Firebase Security Rules are active:
-*   Security rules are configured in your project's `firestore.rules`.
-*   These rules allow logged-in users to modify only their own data:
-    ```javascript
-    rules_version = '2';
-    service cloud.firestore {
-      match /databases/{database}/documents {
-        match /users/{userId} {
-          allow read, write: if request.auth != null && request.auth.uid == userId;
-          
-          match /history/{itemId} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-          }
-          match /bookmarks/{bookmarkId} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-          }
-          match /wrongQuestions/{wrongId} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-          }
-        }
-      }
-    }
-    ```
+### 1. Database Setup
+Ensure you execute the database schema setup script inside your Supabase SQL editor:
+- Copy the contents of `/SUPABASE_SCHEMA.sql` at the root of this project.
+- Paste it into your **Supabase SQL Editor** and click **Run** to provision the necessary tables, triggers, and storage functions.
 
-Enjoy managing your exam portal and adding unlimited subjects, chapters, and study questions! 🎓
+### 2. Environment Configuration
+Define your project credentials inside Vercel's environment variables dashboard or locally in `.env`:
+
+```env
+# Supabase Configuration
+VITE_SUPABASE_URL="your-supabase-project-url"
+VITE_SUPABASE_ANON_KEY="your-supabase-anon-key"
+```
+
+Once defined, your application will seamlessly connect to Supabase for secure cloud-synced practice tracking and content syncing!

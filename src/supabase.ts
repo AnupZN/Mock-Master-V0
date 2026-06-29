@@ -334,3 +334,132 @@ export async function deleteUserWrongQuestion(userId: string, wrong: BookmarkTyp
     console.error("Supabase error deleting wrong question:", error);
   }
 }
+
+export interface CustomQuestion {
+  custom_id: string;
+  user_id: string;
+  subject_id: string;
+  chapter_id: string;
+  question_id: number;
+  question_data: any;
+  updated_at?: string;
+}
+
+export async function fetchCustomQuestions(userId: string): Promise<CustomQuestion[]> {
+  if (!supabaseUrl || !supabaseAnonKey) return [];
+  try {
+    const { data, error } = await supabase
+      .from("custom_questions")
+      .select("*")
+      .eq("user_id", userId);
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Supabase error fetching custom questions:", error);
+    return [];
+  }
+}
+
+export async function saveCustomQuestion(
+  userId: string,
+  subjectId: string,
+  chapterId: string,
+  questionId: number,
+  questionData: any
+): Promise<void> {
+  if (!supabaseUrl || !supabaseAnonKey) return;
+  const customId = `${subjectId}_${chapterId}_${questionId}`;
+  try {
+    const { error } = await supabase
+      .from("custom_questions")
+      .upsert({
+        custom_id: customId,
+        user_id: userId,
+        subject_id: subjectId,
+        chapter_id: chapterId,
+        question_id: questionId,
+        question_data: questionData,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) throw error;
+  } catch (error) {
+    console.error("Supabase error saving custom question:", error);
+  }
+}
+
+// Admin Manifest (Custom Subjects & Chapters index)
+export async function fetchAdminManifest(): Promise<any | null> {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  try {
+    const { data, error } = await supabase
+      .from("admin_manifest")
+      .select("data")
+      .eq("id", "current")
+      .maybeSingle();
+
+    if (error) throw error;
+    return data ? data.data : null;
+  } catch (error) {
+    console.error("Supabase error fetching admin manifest:", error);
+    return null;
+  }
+}
+
+export async function saveAdminManifest(manifestData: any): Promise<void> {
+  if (!supabaseUrl || !supabaseAnonKey) return;
+  try {
+    const { error } = await supabase
+      .from("admin_manifest")
+      .upsert({
+        id: "current",
+        data: manifestData,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) throw error;
+  } catch (error) {
+    console.error("Supabase error saving admin manifest:", error);
+    throw error;
+  }
+}
+
+// Admin Chapters Data (Custom Questions lists per chapter)
+export async function fetchAdminChapterData(subjectId: string, chapterId: string): Promise<any | null> {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  try {
+    const { data, error } = await supabase
+      .from("admin_chapters_data")
+      .select("data")
+      .eq("id", `${subjectId}_${chapterId}`)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data ? data.data : null;
+  } catch (error) {
+    console.error("Supabase error fetching admin chapter data:", error);
+    return null;
+  }
+}
+
+export async function saveAdminChapterData(subjectId: string, chapterId: string, data: any): Promise<void> {
+  if (!supabaseUrl || !supabaseAnonKey) return;
+  try {
+    const { error } = await supabase
+      .from("admin_chapters_data")
+      .upsert({
+        id: `${subjectId}_${chapterId}`,
+        subject_id: subjectId,
+        chapter_id: chapterId,
+        data: data,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) throw error;
+  } catch (error) {
+    console.error("Supabase error saving admin chapter data:", error);
+    throw error;
+  }
+}
+

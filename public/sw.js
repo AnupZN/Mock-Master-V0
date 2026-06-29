@@ -46,8 +46,19 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
-  // Ignore non-GET requests and external API/Supabase calls (unless desired)
+  // Ignore non-GET requests
   if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // ONLY intercept http and https schemes. This avoids throwing DOMException
+  // (e.g. "The string did not match the expected pattern") on Chrome extensions, data:, or other schemes.
+  if (!requestUrl.protocol.startsWith('http')) {
+    return;
+  }
+
+  // Bypass the service worker completely for Supabase database / authentication requests
+  if (requestUrl.host.includes('supabase.co')) {
     return;
   }
 
@@ -68,7 +79,7 @@ self.addEventListener('fetch', (event) => {
             // Return cached response instantly, check for updates in background
             fetch(event.request).then((networkResponse) => {
               if (networkResponse.status === 200) {
-                cache.put(event.request, networkResponse);
+                cache.put(event.request, networkResponse.clone());
               }
             }).catch(() => {/* Ignore network errors when offline */});
             return cachedResponse;
@@ -93,28 +104,30 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 2. Main app shell bundle (Vite assets) - Stale-While-Revalidate Strategy
-  // Serves from cache immediately for speed, but fetches latest in background.
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Fetch from network to update the cache in the background
-        const fetchPromise = fetch(event.request).then((networkResponse) => {
-          if (networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse);
-            });
-          }
-          return networkResponse;
-        }).catch((err) => {
-          console.log('[Service Worker] Background fetch failed (probably offline):', err);
-        });
+  // Only apply to same-origin requests (HTML, JS, CSS assets of the app)
+  // This ensures external web APIs are never stale or improperly cached.
+  if (requestUrl.origin === self.location.origin) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          // Fetch from network to update the cache in the background
+          fetch(event.request).then((networkResponse) => {
+            if (networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, networkResponse.clone());
+              });
+            }
+          }).catch((err) => {
+            console.log('[Service Worker] Background fetch failed (probably offline):', err);
+          });
 
-        // Return the cached version immediately
-        return cachedResponse;
-      }
+          // Return the cached version immediately
+          return cachedResponse;
+        }
 
-      // If not in cache, fallback to standard network request
-      return fetch(event.request);
-    })
-  );
+        // If not in cache, fallback to standard network request
+        return fetch(event.request);
+      })
+    );
+  }
 });

@@ -11,7 +11,8 @@ import {
   Copy,
   Info,
   Check,
-  Tag
+  Tag,
+  Pencil
 } from "lucide-react";
 import { Question, Bookmark as BookmarkType } from "../types";
 import { getThemeStyles } from "../utils/theme";
@@ -26,7 +27,9 @@ interface ReviewViewProps {
   subjectName: string;
   chapterTitle?: string;
   theme?: string;
+  isLoggedIn?: boolean;
   onToggleBookmark: (questionId: number) => void;
+  onUpdateQuestion?: (updatedQuestion: Question) => void;
   onBack: () => void;
 }
 
@@ -41,7 +44,9 @@ export default function ReviewView({
   subjectName,
   chapterTitle,
   theme,
+  isLoggedIn,
   onToggleBookmark,
+  onUpdateQuestion,
   onBack,
 }: ReviewViewProps) {
   const themeClass = useMemo(() => getThemeStyles(theme), [theme]);
@@ -49,6 +54,66 @@ export default function ReviewView({
   const [filter, setFilter] = useState<FilterType>("all");
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [language, setLanguage] = useState<"en" | "hi">("en");
+
+  // Question Editing States
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [modalTab, setModalTab] = useState<"en" | "hi">("en");
+  const [editQuestionText, setEditQuestionText] = useState("");
+  const [editOptions, setEditOptions] = useState<string[]>(["", "", "", ""]);
+  const [editCorrect, setEditCorrect] = useState<number>(0);
+  const [editExplanation, setEditExplanation] = useState("");
+  const [editQuestionHi, setEditQuestionHi] = useState("");
+  const [editOptionsHi, setEditOptionsHi] = useState<string[]>(["", "", "", ""]);
+  const [editExplanationHi, setEditExplanationHi] = useState("");
+
+  const handleOpenEdit = () => {
+    if (!activeQuestion) return;
+    setEditQuestionText(activeQuestion.question);
+    setEditOptions(activeQuestion.options.length === 4 ? [...activeQuestion.options] : ["", "", "", ""]);
+    setEditCorrect(activeQuestion.correct);
+    setEditExplanation(activeQuestion.explanation || "");
+    
+    setEditQuestionHi(activeQuestion.question_hi || "");
+    setEditOptionsHi(
+      activeQuestion.options_hi && activeQuestion.options_hi.length === 4
+        ? [...activeQuestion.options_hi]
+        : ["", "", "", ""]
+    );
+    setEditExplanationHi(activeQuestion.explanation_hi || "");
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!activeQuestion || !onUpdateQuestion) return;
+    const updated: Question = {
+      ...activeQuestion,
+      question: editQuestionText,
+      options: editOptions,
+      correct: editCorrect,
+      explanation: editExplanation,
+    };
+    
+    if (editQuestionHi.trim()) {
+      updated.question_hi = editQuestionHi;
+    } else {
+      delete updated.question_hi;
+    }
+    
+    if (editOptionsHi.some(opt => opt.trim() !== "")) {
+      updated.options_hi = editOptionsHi;
+    } else {
+      delete updated.options_hi;
+    }
+    
+    if (editExplanationHi.trim()) {
+      updated.explanation_hi = editExplanationHi;
+    } else {
+      delete updated.explanation_hi;
+    }
+    
+    onUpdateQuestion(updated);
+    setShowEditModal(false);
+  };
 
   // Check if a question is bookmarked
   const isBookmarked = (qId: number) => {
@@ -221,6 +286,17 @@ export default function ReviewView({
                     >
                       <Bookmark size={14} fill={isBookmarked(activeQuestion.id) ? "currentColor" : "none"} />
                     </button>
+
+                    {/* Edit Question */}
+                    {onUpdateQuestion && (
+                      <button
+                        onClick={handleOpenEdit}
+                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition border border-transparent hover:border-slate-200/40 dark:hover:border-slate-700/50"
+                        title="Edit Question details"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -402,6 +478,194 @@ export default function ReviewView({
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Question Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" id="edit-question-modal">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">Edit Question #{activeQuestion?.id}</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  {isLoggedIn ? (
+                    <span className="text-emerald-500 font-semibold">🟢 Changes will sync automatically to Supabase</span>
+                  ) : (
+                    <span className="text-amber-500 font-semibold">⚠️ Guest mode (changes are temporary, login to sync)</span>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold p-1 bg-slate-50 dark:bg-slate-800 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="px-6 py-2 bg-slate-50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setModalTab("en")}
+                className={`px-3 py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                  modalTab === "en"
+                    ? `bg-white dark:bg-slate-800 ${themeClass.primaryText} shadow-sm border border-slate-100 dark:border-slate-800`
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                }`}
+              >
+                English Version
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTab("hi")}
+                className={`px-3 py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                  modalTab === "hi"
+                    ? `bg-white dark:bg-slate-800 ${themeClass.primaryText} shadow-sm border border-slate-100 dark:border-slate-800`
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                }`}
+              >
+                Hindi Translation
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1 font-sans">
+              {modalTab === "en" ? (
+                <>
+                  {/* English Question Text */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Question Text (EN)</label>
+                    <textarea
+                      value={editQuestionText}
+                      onChange={(e) => setEditQuestionText(e.target.value)}
+                      rows={3}
+                      className="w-full text-sm p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Type the question in English..."
+                    />
+                  </div>
+
+                  {/* English Options */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Options (EN)</label>
+                    {editOptions.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="w-6 h-6 text-xs bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center font-bold font-mono">
+                          {["A", "B", "C", "D"][idx]}
+                        </span>
+                        <input
+                          type="text"
+                          value={opt}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditOptions((prev) => prev.map((o, i) => (i === idx ? val : o)));
+                          }}
+                          className="flex-1 text-sm p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder={`Option ${["A", "B", "C", "D"][idx]} text...`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Correct Option index */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Correct Option</label>
+                    <select
+                      value={editCorrect}
+                      onChange={(e) => setEditCorrect(Number(e.target.value))}
+                      className="w-full text-sm p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      <option value={0}>Option A</option>
+                      <option value={1}>Option B</option>
+                      <option value={2}>Option C</option>
+                      <option value={3}>Option D</option>
+                    </select>
+                  </div>
+
+                  {/* Explanation */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Explanation / Solution (EN)</label>
+                    <textarea
+                      value={editExplanation}
+                      onChange={(e) => setEditExplanation(e.target.value)}
+                      rows={3}
+                      className="w-full text-sm p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Type correct explanation..."
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Hindi Question Text */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Question Text (HI)</label>
+                    <textarea
+                      value={editQuestionHi}
+                      onChange={(e) => setEditQuestionHi(e.target.value)}
+                      rows={3}
+                      className="w-full text-sm p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Type the question in Hindi..."
+                    />
+                  </div>
+
+                  {/* Hindi Options */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Options (HI)</label>
+                    {editOptionsHi.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="w-6 h-6 text-xs bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center font-bold font-mono">
+                          {["A", "B", "C", "D"][idx]}
+                        </span>
+                        <input
+                          type="text"
+                          value={opt}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditOptionsHi((prev) => prev.map((o, i) => (i === idx ? val : o)));
+                          }}
+                          className="flex-1 text-sm p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder={`Option ${["A", "B", "C", "D"][idx]} text in Hindi...`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Hindi Explanation */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Explanation / Solution (HI)</label>
+                    <textarea
+                      value={editExplanationHi}
+                      onChange={(e) => setEditExplanationHi(e.target.value)}
+                      rows={3}
+                      className="w-full text-sm p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Type hindi explanation..."
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 bg-slate-50/50 dark:bg-slate-900/20">
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                className={`px-5 py-2.5 rounded-xl text-white ${themeClass.primaryBg} hover:opacity-90 font-bold text-xs shadow-sm transition cursor-pointer`}
+              >
+                Save Correction
+              </button>
             </div>
           </div>
         </div>
