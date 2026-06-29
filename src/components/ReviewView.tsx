@@ -394,7 +394,7 @@ export default function ReviewView({
                     <Info size={16} />
                     <h4 className="font-bold text-xs uppercase tracking-wider">Detailed Solution & Explanation</h4>
                   </div>
-                  <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed font-sans font-medium">
+                  <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed font-sans font-medium whitespace-pre-wrap">
                     {language === "hi" && currentQuestion.explanation_hi
                       ? currentQuestion.explanation_hi
                       : currentQuestion.explanation}

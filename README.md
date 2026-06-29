@@ -113,7 +113,7 @@ Open `/public/data/manifest.json` and append your subject and chapters:
 ```
 
 #### **Step B: Create the Chapter JSON File**
-Create a new file under `/public/data/Geography/chapter01.json` with the following format:
+Create a new file under `/public/data/Geography/chapter01.json` with the following format. You can include optional Hindi translation fields (`question_hi`, `options_hi`, and `explanation_hi`) alongside the English ones for bilingual support:
 
 ```json
 {
@@ -126,13 +126,60 @@ Create a new file under `/public/data/Geography/chapter01.json` with the followi
     {
       "id": 1,
       "question": "Which layer of the atmosphere contains the ozone layer?",
-      "options": ["Troposphere", "Stratosphere", "Mesosphere", "Thermosphere"],
+      "options": [
+        "Troposphere",
+        "Stratosphere",
+        "Mesosphere",
+        "Thermosphere"
+      ],
       "correct": 1,
       "explanation": "The stratosphere contains the ozone layer, which absorbs and scatters solar ultraviolet radiation.",
       "difficulty": "Easy",
-      "tags": ["Atmosphere", "Ozone"]
+      "tags": ["Atmosphere", "Ozone"],
+      "question_hi": "वायुमंडल की किस परत में ओजोन परत पाई जाती है?",
+      "options_hi": [
+        "क्षोभमंडल",
+        "समतापमंडल",
+        "मध्यमंडल",
+        "बाह्य वायुमंडल"
+      ],
+      "explanation_hi": "समतापमंडल में ओजोन परत पाई जाती है, जो हानिकारक पराबैंगनी किरणों को अवशोषित करती है।"
     }
   ]
+}
+```
+
+#### **Step C: Hindi Tables Support (Optional)**
+If your questions contain tables, you can also define translated headers and rows using the `table_hi` field:
+
+```json
+{
+  "id": 2,
+  "question": "Match the mountain peaks with their continents.",
+  "options": ["A-3, B-1, C-2", "A-1, B-2, C-3", "A-2, B-3, C-1"],
+  "correct": 0,
+  "explanation": "Everest is in Asia, Kilimanjaro in Africa, and Aconcagua in South America.",
+  "difficulty": "Medium",
+  "tags": ["Mountains"],
+  "question_hi": "पर्वत शिखरों का उनके महाद्वीपों के साथ मिलान करें।",
+  "options_hi": ["A-3, B-1, C-2", "A-1, B-2, C-3", "A-2, B-3, C-1"],
+  "explanation_hi": "एवरेस्ट एशिया में है, किलिमंजारो अफ्रीका में और अकोंकागुआ दक्षिण अमेरिका में है।",
+  "table": {
+    "headers": ["Peak", "Continent"],
+    "rows": [
+      ["Everest", "Asia"],
+      ["Kilimanjaro", "Africa"],
+      ["Aconcagua", "South America"]
+    ]
+  },
+  "table_hi": {
+    "headers": ["शिखर", "महाद्वीप"],
+    "rows": [
+      ["एवरेस्ट", "एशिया"],
+      ["किलिमंजारो", "अफ्रीका"],
+      ["अकोंकागुआ", "दक्षिण अमेरिका"]
+    ]
+  }
 }
 ```
 

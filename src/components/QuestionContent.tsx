@@ -109,7 +109,7 @@ export default function QuestionContent({
 
   return (
     <div className="space-y-4" style={sizeStyle}>
-      <h3 className="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 leading-relaxed font-sans">
+      <h3 className="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 leading-relaxed font-sans whitespace-pre-wrap">
         {tableToRender && !structuredTable ? parsed.textBefore : qText}
       </h3>
 
@@ -154,7 +154,7 @@ export default function QuestionContent({
       )}
 
       {parsed.textAfter && !structuredTable && (
-        <p className="text-sm md:text-base font-semibold text-slate-700 dark:text-slate-300 leading-relaxed mt-2">
+        <p className="text-sm md:text-base font-semibold text-slate-700 dark:text-slate-300 leading-relaxed mt-2 whitespace-pre-wrap">
           {parsed.textAfter}
         </p>
       )}

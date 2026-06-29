@@ -107,7 +107,20 @@ function parseBulkQuestions(input: string, startId: number): { questions: Questi
   }
 
   // 2. Try Plain Text parsing
-  const blocks = trimmed.split(/\n\s*\n+/);
+  const rawBlocks = trimmed.split(/\n\s*\n+/);
+  const blocks: string[] = [];
+  for (const rawBlock of rawBlocks) {
+    const trimmedBlock = rawBlock.trim();
+    if (!trimmedBlock) continue;
+
+    // If this block starts with a Hindi question key, and there is a previous block, merge them!
+    if (blocks.length > 0 && /^(Q_HI|QUESTION_HI|HINDI_QUESTION|HINDI_Q)\s*[:)]/i.test(trimmedBlock)) {
+      blocks[blocks.length - 1] += "\n\n" + trimmedBlock;
+    } else {
+      blocks.push(trimmedBlock);
+    }
+  }
+
   const questions: Question[] = [];
   let currentId = startId;
 
@@ -1020,7 +1033,7 @@ export default function AdminDashboard({
                             </span>
                           )}
                         </div>
-                        <h4 className="text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                        <h4 className="text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed whitespace-pre-wrap">
                           {q.question}
                         </h4>
                         
