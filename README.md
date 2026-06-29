@@ -352,7 +352,18 @@ Ensure options are represented as arrays where 0 = A, 1 = B, 2 = C, 3 = D:
 ### 🚨 Strict Rules:
 - Do not output any conversational introduction, notes, or extra markdown blocks. 
 - Only return the raw formatted questions.
-- If a table is present in the raw question, format it using Markdown pipe tables inside the question text or construct a JSON table schema as defined in the guidelines.
+- **Handling Table-based Questions (Crucial)**: 
+  - If a raw question contains tabular data (like matching columns, database tables, or schedules), represent the table using clean **Markdown Pipe Tables** inside the main question text (`question` / `question_hi`) or explanation text.
+  - Separate headings and content with standard pipes (`|`) and hyphens (`-`).
+  - **Do NOT** output raw HTML tables. Keep tables neat, aligned, and properly bilingual (translate column headers and table cell content into Hindi inside `question_hi` as well).
+  - *Example Markdown Table format in Question text:*
+    ```markdown
+    | Column A (List-I) | Column B (List-II) |
+    |-------------------|--------------------|
+    | 1. Newton          | A. Theory of Relativity |
+    | 2. Einstein        | B. Laws of Motion   |
+    ```
+  - In Format B (JSON), escape newlines inside the string as `\n` to keep the JSON valid. (e.g., `"question": "Match the following:\n\n| Column A | Column B |\n|---|---|\n..."`).
 
 ---
 Here are my raw/cluttered questions to process:
