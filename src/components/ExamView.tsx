@@ -301,7 +301,7 @@ export default function ExamView({
   return (
     <div
       ref={containerRef}
-      className={`min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200 ${
+      className={`fixed inset-0 w-screen h-screen overflow-hidden flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200 ${
         isFullscreen ? "p-4" : ""
       }`}
       style={{ fontSize: `${zoomLevel}%` }}
