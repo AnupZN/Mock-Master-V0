@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import {
   BookOpen,
@@ -27,7 +27,7 @@ interface DashboardViewProps {
   userName?: string;
   theme?: string;
   onNavigate: (view: string, data?: any) => void;
-  onStartPractice: (type: string) => void;
+  onStartPractice: (type: string, selectedSubjectIds?: string[], count?: number) => void;
 }
 
 export default function DashboardView({
@@ -41,6 +41,16 @@ export default function DashboardView({
   onStartPractice,
 }: DashboardViewProps) {
   const themeClass = useMemo(() => getThemeStyles(theme), [theme]);
+
+  const [isMixedModalOpen, setIsMixedModalOpen] = useState(false);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
+  const [mixedQuestionCount, setMixedQuestionCount] = useState(15);
+
+  const openMixedModal = () => {
+    setSelectedSubjectIds(subjects.map((s) => s.id));
+    setIsMixedModalOpen(true);
+  };
+
   // Overall stats
   const totals = useMemo(() => {
     const totalSubjects = subjects.length;
@@ -356,7 +366,7 @@ export default function DashboardView({
             </button>
           </div>
           <button
-            onClick={() => onStartPractice("mixed")}
+            onClick={openMixedModal}
             className={`w-full flex items-center justify-center gap-2 py-3 ${themeClass.lightBg} ${themeClass.lightBgHover} ${themeClass.primaryText} font-bold rounded-xl transition duration-150 cursor-pointer`}
           >
             <Shuffle size={16} />
@@ -487,6 +497,143 @@ export default function DashboardView({
           </div>
         )}
       </div>
+
+      {isMixedModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6 shadow-xl space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500`}>
+                  <Shuffle size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg text-slate-900 dark:text-slate-100">
+                    Mixed Practice Setup
+                  </h3>
+                  <p className="text-xs text-slate-400">Configure your custom practice session</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsMixedModalOpen(false)}
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            {/* Select Subjects */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Select Subjects
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubjectIds(subjects.map((s) => s.id))}
+                    className={`text-[10px] font-bold ${themeClass.primaryText} hover:underline`}
+                  >
+                    Select All
+                  </button>
+                  <span className="text-slate-300 text-xs">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubjectIds([])}
+                    className={`text-[10px] font-bold text-slate-400 hover:underline`}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              
+              <div className="max-h-[200px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 border border-slate-150 dark:border-slate-800 rounded-2xl">
+                {subjects.map((subj) => {
+                  const isChecked = selectedSubjectIds.includes(subj.id);
+                  const chapterCount = subj.chapters.length;
+                  return (
+                    <label
+                      key={subj.id}
+                      className="flex items-center justify-between p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 cursor-pointer transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedSubjectIds((prev) => [...prev, subj.id]);
+                            } else {
+                              setSelectedSubjectIds((prev) => prev.filter((id) => id !== subj.id));
+                            }
+                          }}
+                          className={`w-4.5 h-4.5 text-indigo-600 border-slate-300 dark:border-slate-700 rounded focus:ring-indigo-500`}
+                        />
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                          {subj.name}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-full">
+                        {chapterCount} {chapterCount === 1 ? "chapter" : "chapters"}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Select Question Count */}
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                Question Count
+              </label>
+              <div className="grid grid-cols-5 gap-2">
+                {[10, 15, 20, 25, 30].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setMixedQuestionCount(num)}
+                    className={`py-2 px-1 text-xs font-extrabold rounded-xl transition border ${
+                      mixedQuestionCount === num
+                        ? `${themeClass.primaryBg} border-transparent text-white shadow-sm`
+                        : "bg-slate-50 dark:bg-slate-800/20 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsMixedModalOpen(false)}
+                className="flex-1 py-3 text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-200 rounded-xl transition cursor-pointer text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={selectedSubjectIds.length === 0}
+                onClick={() => {
+                  setIsMixedModalOpen(false);
+                  onStartPractice("mixed", selectedSubjectIds, mixedQuestionCount);
+                }}
+                className={`flex-1 py-3 text-xs font-bold text-center text-white rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  selectedSubjectIds.length > 0
+                    ? `${themeClass.primaryBg} hover:${themeClass.primaryHoverBg} shadow-sm ${themeClass.shadowMd}`
+                    : "bg-slate-300 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed"
+                }`}
+              >
+                <Play size={14} fill="currentColor" />
+                <span>Start Practice</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -585,14 +585,18 @@ export default function App() {
   };
 
   // Compile Random Practice Sessions dynamically
-  const handleStartPractice = async (type: string) => {
+  const handleStartPractice = async (type: string, selectedSubjectIds?: string[], questionCount?: number) => {
     setLoading(true);
     try {
       // 1. Gather ALL questions by loading ALL chapters
       const allQs: { subject: Subject; chapter: any; question: Question }[] = [];
       const loadedChapters: Record<string, ChapterData> = {};
 
-      for (const subj of subjects) {
+      const subjectsToLoad = selectedSubjectIds && selectedSubjectIds.length > 0
+        ? subjects.filter(s => selectedSubjectIds.includes(s.id))
+        : subjects;
+
+      for (const subj of subjectsToLoad) {
         for (const chap of subj.chapters) {
           const data = await loadChapterData(subj.id, chap.id, subj.folder, chap.file);
           if (data) {
@@ -641,8 +645,16 @@ export default function App() {
         }
       } else if (type === "mixed") {
         const shuffled = [...allQs].sort(() => 0.5 - Math.random());
-        practiceQs = shuffled.slice(0, 15).map((item) => item.question);
-        chapterTitle = "Multi-Subject Mixed Challenge";
+        const count = questionCount || 15;
+        practiceQs = shuffled.slice(0, count).map((item) => item.question);
+        
+        if (selectedSubjectIds && selectedSubjectIds.length > 0) {
+          const names = subjectsToLoad.map(s => s.name);
+          subjectName = names.length > 2 ? `${names.slice(0, 2).join(", ")}...` : names.join(" & ");
+          chapterTitle = `Mixed Subject Practice (${count} Qs)`;
+        } else {
+          chapterTitle = "Multi-Subject Mixed Challenge";
+        }
       }
 
       if (practiceQs.length === 0) {
@@ -918,6 +930,12 @@ export default function App() {
           const data = await loadChapterData(subj.id, chap.id, subj.folder, chap.file);
           if (data) {
             data.questions.forEach((q) => {
+              // Only search within bookmarked questions
+              const isBookmarked = bookmarks.some(
+                (b) => b.subjectId === subj.id && b.chapterId === chap.id && b.questionId === q.id
+              );
+              if (!isBookmarked) return;
+
               if (
                 q.question.toLowerCase().includes(qLower) ||
                 q.id.toString() === qLower ||
@@ -1071,7 +1089,7 @@ export default function App() {
                 <Search size={16} className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search subjects, chapters, questions..."
+                  placeholder="Search subjects, chapters, bookmarks..."
                   value={searchQuery}
                   onChange={(e) => handleGlobalSearch(e.target.value)}
                   className={`w-full pl-10 pr-4 py-2.5 bg-slate-100 dark:bg-slate-800/60 border-none rounded-xl text-sm focus:outline-none focus:ring-2 ${themeClass.focusRing} transition-all text-slate-800 dark:text-slate-100`}
@@ -1311,7 +1329,7 @@ export default function App() {
                       {/* Matching Questions text */}
                       {searchResults.questions.length > 0 && (
                         <div className="space-y-2">
-                          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Matching Questions</h3>
+                          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Matching Bookmarked Questions</h3>
                           <div className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-2xl overflow-hidden">
                             {searchResults.questions.map((item, idx) => (
                               <div key={idx} className="p-4 space-y-1 bg-white dark:bg-slate-900">
