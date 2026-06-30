@@ -5,16 +5,32 @@
       "name": "History",
       "icon": "🏛️",
       "folder": "History",
+      "subSubjects": [
+        {
+          "id": "ancient_history",
+          "name": "Ancient History"
+        },
+        {
+          "id": "medieval_history",
+          "name": "Medieval History"
+        },
+        {
+          "id": "modern_history",
+          "name": "Modern History"
+        }
+      ],
       "chapters": [
         {
           "id": "chapter01",
           "title": "Indus Valley Civilization",
-          "file": "chapter01.json"
+          "file": "chapter01.json",
+          "subSubjectId": "ancient_history"
         },
         {
           "id": "chapter02",
           "title": "The Maurya Empire",
-          "file": "chapter02.json"
+          "file": "chapter02.json",
+          "subSubjectId": "ancient_history"
         }
       ]
     },
@@ -23,11 +39,22 @@
       "name": "Polity",
       "icon": "⚖️",
       "folder": "Polity",
+      "subSubjects": [
+        {
+          "id": "constitutional_framework",
+          "name": "Constitutional Framework"
+        },
+        {
+          "id": "system_of_government",
+          "name": "System of Government"
+        }
+      ],
       "chapters": [
         {
           "id": "chapter01",
           "title": "Preamble & Salient Features",
-          "file": "chapter01.json"
+          "file": "chapter01.json",
+          "subSubjectId": "constitutional_framework"
         }
       ]
     },
@@ -36,11 +63,22 @@
       "name": "Geography",
       "icon": "🌍",
       "folder": "Geography",
+      "subSubjects": [
+        {
+          "id": "physical_geography",
+          "name": "Physical Geography"
+        },
+        {
+          "id": "human_geography",
+          "name": "Human Geography"
+        }
+      ],
       "chapters": [
         {
           "id": "chapter01",
           "title": "Physiography of India",
-          "file": "chapter01.json"
+          "file": "chapter01.json",
+          "subSubjectId": "physical_geography"
         }
       ]
     }

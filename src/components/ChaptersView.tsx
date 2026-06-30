@@ -10,7 +10,9 @@ import {
   Play,
   RotateCcw,
   BookOpenCheck,
-  Lock
+  Lock,
+  Folder,
+  FolderOpen
 } from "lucide-react";
 import { Subject, Chapter, ChapterData, AttemptHistoryItem, Bookmark as BookmarkType } from "../types";
 import { getThemeStyles } from "../utils/theme";
@@ -41,6 +43,12 @@ export default function ChaptersView({
   const [chaptersData, setChaptersData] = useState<Record<string, ChapterData>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSubSubjectId, setSelectedSubSubjectId] = useState<string | null>(null);
+
+  // Reset selected sub-subject when switching subjects
+  useEffect(() => {
+    setSelectedSubSubjectId(null);
+  }, [subject]);
 
   // Fetch all chapter data to display stats dynamically
   useEffect(() => {
@@ -209,141 +217,320 @@ export default function ChaptersView({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6" id="chapters-grid">
-          {subject.chapters.map((chapter) => {
-            const data = chaptersData[chapter.id];
-            const stats = chapterStats[chapter.id] || {
-              completed: false,
-              bestScore: 0,
-              wrongCount: 0,
-              bookmarkCount: 0,
+        <div className="space-y-10" id="chapters-grid">
+          {(() => {
+            const hasSubSubjects = subject.subSubjects && subject.subSubjects.length > 0;
+
+            const renderChapterCard = (chapter: Chapter) => {
+              const data = chaptersData[chapter.id];
+              const stats = chapterStats[chapter.id] || {
+                completed: false,
+                bestScore: 0,
+                wrongCount: 0,
+                bookmarkCount: 0,
+              };
+
+              if (!data) return null;
+
+              const questionCount = data.questions.length;
+              const estimatedMinutes = Math.ceil((questionCount * data.timePerQuestion) / 60);
+
+              // Calculate difficulty breakdown or primary level
+              const difficultyCount = data.questions.reduce((acc, q) => {
+                acc[q.difficulty] = (acc[q.difficulty] || 0) + 1;
+                return acc;
+              }, {} as Record<string, number>);
+
+              let primaryDifficulty = "Moderate";
+              if (difficultyCount["Easy"] > questionCount / 2) primaryDifficulty = "Easy";
+              if (difficultyCount["Hard"] > questionCount / 2) primaryDifficulty = "Challenging";
+
+              return (
+                <div
+                  key={chapter.id}
+                  className={`group relative rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-6 shadow-sm hover:shadow-md hover:${themeClass.borderActive} dark:hover:${themeClass.borderActive} transition-all duration-300 flex flex-col justify-between`}
+                >
+                  <div className="space-y-4">
+                    {/* Title & Badges */}
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1.5 pr-4">
+                        {chapter.subSubjectId && subject.subSubjects && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 py-0.5 px-2 rounded-md">
+                            📁 {subject.subSubjects.find((s) => s.id === chapter.subSubjectId)?.name || "General"}
+                          </span>
+                        )}
+                        <h3 className={`font-bold text-lg text-slate-800 dark:text-slate-200 group-hover:${themeClass.primaryText} transition-colors duration-200`}>
+                          {chapter.title}
+                        </h3>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        {stats.completed && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 py-1 px-2.5 rounded-full uppercase tracking-wider">
+                            <CheckCircle size={10} />
+                            <span>Attempted</span>
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-extrabold py-1 px-2.5 rounded-full uppercase tracking-wider ${
+                          primaryDifficulty === "Easy"
+                            ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400"
+                            : primaryDifficulty === "Challenging"
+                            ? "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400"
+                            : "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400"
+                        }`}>
+                          {primaryDifficulty}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Estimated parameters */}
+                    <div className="flex items-center gap-4 text-xs font-semibold text-slate-400 font-mono">
+                      <span className="flex items-center gap-1">
+                        <Clock size={13} />
+                        <span>~{estimatedMinutes} Mins</span>
+                      </span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <HelpCircle size={13} />
+                        <span>{questionCount} Questions</span>
+                      </span>
+                    </div>
+
+                    {/* Best score & dynamic details */}
+                    <div className="flex flex-wrap items-center gap-4 bg-slate-50 dark:bg-slate-800/40 py-3 px-4 rounded-2xl border border-slate-100 dark:border-slate-800/10">
+                      <div className="flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        <Award size={14} className="text-amber-500" />
+                        <span>Best Score:</span>
+                        <span className="font-bold text-slate-700 dark:text-slate-300">
+                          {stats.bestScore > 0 ? `${stats.bestScore}%` : "N/A"}
+                        </span>
+                      </div>
+
+                      {stats.bookmarkCount > 0 ? (
+                        <button
+                          onClick={() => onStartExam(data, chapter.id, { onlyBookmarked: true })}
+                          className={`flex items-center gap-1 text-xs font-bold ${themeClass.primaryText} hover:opacity-80 transition cursor-pointer`}
+                          title="Click to start test with bookmarked questions"
+                        >
+                          <Bookmark size={14} className={themeClass.primaryText} fill="currentColor" />
+                          <span>Bookmarked:</span>
+                          <span className="font-extrabold underline decoration-dotted">
+                            {stats.bookmarkCount} (Practice)
+                          </span>
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1 text-xs font-semibold text-slate-400">
+                          <Bookmark size={14} className="text-slate-400" />
+                          <span>Bookmarked:</span>
+                          <span className="font-bold">
+                            {stats.bookmarkCount}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Grid of Action Buttons */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-200 dark:border-slate-800/60 mt-6 pt-4">
+                    {/* Primary Start Button */}
+                    <button
+                      onClick={() => onStartExam(data, chapter.id)}
+                      className={`flex items-center justify-center gap-1.5 py-3 px-4 ${themeClass.primaryBg} ${themeClass.primaryHoverBg} text-white text-xs font-bold rounded-xl shadow-sm transition cursor-pointer`}
+                    >
+                      <Play size={13} fill="currentColor" />
+                      <span>Start Test</span>
+                    </button>
+
+                    {/* Revision Review Button */}
+                    <button
+                      onClick={() => onReviseChapter(data)}
+                      disabled={!stats.completed}
+                      className={`flex items-center justify-center gap-1.5 py-3 px-4 text-xs font-bold rounded-xl border transition ${
+                        stats.completed
+                          ? `bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:${themeClass.lightBg} hover:${themeClass.primaryText} border-slate-200 dark:border-slate-800/60 cursor-pointer`
+                          : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-200 dark:border-slate-800/20 cursor-not-allowed opacity-50"
+                      }`}
+                      title={!stats.completed ? "Unlock Quick Study by completing the test at least once" : "Quick Revision Mode"}
+                    >
+                      {stats.completed ? (
+                        <BookOpenCheck size={13} />
+                      ) : (
+                        <Lock size={13} className="text-slate-400" />
+                      )}
+                      <span>Quick Study</span>
+                    </button>
+
+                    {/* Practice Wrong Questions Button */}
+                    <button
+                      onClick={() => onStartExam(data, chapter.id, { onlyWrong: true })}
+                      disabled={stats.wrongCount === 0}
+                      className={`flex items-center justify-center gap-1.5 py-3 px-4 text-xs font-bold rounded-xl transition cursor-pointer border ${
+                        stats.wrongCount > 0
+                          ? "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-950/50 hover:bg-rose-100/60"
+                          : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-200 dark:border-slate-800/20 cursor-not-allowed opacity-50"
+                      }`}
+                    >
+                      <RotateCcw size={13} />
+                      <span>Retry Wrong ({stats.wrongCount})</span>
+                    </button>
+                  </div>
+                </div>
+              );
             };
 
-            if (!data) return null;
+            // Group by sub-subjects
+            const subSubjectsList = subject.subSubjects || [];
+            const chaptersBySubSubject: Record<string, Chapter[]> = {};
+            const unassignedChapters: Chapter[] = [];
 
-            const questionCount = data.questions.length;
-            const estimatedMinutes = Math.ceil((questionCount * data.timePerQuestion) / 60);
+            subject.chapters.forEach((chap) => {
+              if (chap.subSubjectId && subSubjectsList.some((s) => s.id === chap.subSubjectId)) {
+                if (!chaptersBySubSubject[chap.subSubjectId]) {
+                  chaptersBySubSubject[chap.subSubjectId] = [];
+                }
+                chaptersBySubSubject[chap.subSubjectId].push(chap);
+              } else {
+                unassignedChapters.push(chap);
+              }
+            });
 
-            // Calculate difficulty breakdown or primary level
-            const difficultyCount = data.questions.reduce((acc, q) => {
-              acc[q.difficulty] = (acc[q.difficulty] || 0) + 1;
-              return acc;
-            }, {} as Record<string, number>);
+            if (!hasSubSubjects) {
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {subject.chapters.map((chapter) => renderChapterCard(chapter))}
+                </div>
+              );
+            }
 
-            let primaryDifficulty = "Moderate";
-            if (difficultyCount["Easy"] > questionCount / 2) primaryDifficulty = "Easy";
-            if (difficultyCount["Hard"] > questionCount / 2) primaryDifficulty = "Challenging";
+            // Build structured sub-subject list with statistics
+            const groupsList = subSubjectsList.map((sub) => {
+              const chaps = chaptersBySubSubject[sub.id] || [];
+              const attemptedCount = chaps.filter((c) => chapterStats[c.id]?.completed).length;
+              const totalQuestions = chaps.reduce((acc, c) => {
+                const qData = chaptersData[c.id];
+                return acc + (qData ? qData.questions.length : 0);
+              }, 0);
+              const progressPercent = chaps.length > 0 ? Math.round((attemptedCount / chaps.length) * 100) : 0;
+
+              return {
+                id: sub.id,
+                name: sub.name,
+                chapters: chaps,
+                attemptedCount,
+                totalQuestions,
+                progressPercent,
+              };
+            });
+
+            // Include unassigned chapters card if they exist
+            if (unassignedChapters.length > 0) {
+              const attemptedCount = unassignedChapters.filter((c) => chapterStats[c.id]?.completed).length;
+              const totalQuestions = unassignedChapters.reduce((acc, c) => {
+                const qData = chaptersData[c.id];
+                return acc + (qData ? qData.questions.length : 0);
+              }, 0);
+              const progressPercent = unassignedChapters.length > 0 ? Math.round((attemptedCount / unassignedChapters.length) * 100) : 0;
+
+              groupsList.push({
+                id: "_unassigned",
+                name: "General / Unassigned",
+                chapters: unassignedChapters,
+                attemptedCount,
+                totalQuestions,
+                progressPercent,
+              });
+            }
+
+            if (selectedSubSubjectId === null) {
+              // RENDER CARDS VIEW FOR SUB-SUBJECTS
+              return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-250">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      Select a category to view chapters
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {groupsList.map((group) => (
+                      <button
+                        key={group.id}
+                        onClick={() => setSelectedSubSubjectId(group.id)}
+                        className="group text-left p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl hover:border-indigo-500 dark:hover:border-indigo-400 hover:shadow-md transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-5 shadow-sm"
+                      >
+                        <div className="space-y-4 w-full">
+                          <div className="flex items-center justify-between">
+                            <div className={`p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 text-slate-500 group-hover:${themeClass.primaryText} transition-colors duration-250`}>
+                              <Folder size={22} className="group-hover:scale-110 transition-transform duration-200" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-850 py-1 px-2.5 rounded-full">
+                              {group.chapters.length} {group.chapters.length === 1 ? "Chapter" : "Chapters"}
+                            </span>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-extrabold text-base text-slate-850 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 line-clamp-1">
+                              {group.name}
+                            </h4>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-1">
+                              {group.totalQuestions} Questions total across sections
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="w-full space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800/40">
+                          <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                            <span>Completed</span>
+                            <span>{group.attemptedCount}/{group.chapters.length} Attempted</span>
+                          </div>
+                          <div className="w-full bg-slate-100 dark:bg-slate-800/60 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className={`h-full ${themeClass.primaryBg} transition-all duration-500`}
+                              style={{ width: `${group.progressPercent}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+
+            // RENDER SELECTED CHAPTER LIST
+            const selectedGroup = groupsList.find((g) => g.id === selectedSubSubjectId);
+            const displayChapters = selectedGroup ? selectedGroup.chapters : [];
 
             return (
-              <div
-                key={chapter.id}
-                className={`group relative rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-6 shadow-sm hover:shadow-md hover:${themeClass.borderActive} dark:hover:${themeClass.borderActive} transition-all duration-300 flex flex-col justify-between`}
-              >
-                <div className="space-y-4">
-                  {/* Title & Badges */}
-                  <div className="flex items-start justify-between">
-                    <h3 className={`font-bold text-lg text-slate-800 dark:text-slate-200 group-hover:${themeClass.primaryText} transition-colors duration-200 pr-4`}>
-                      {chapter.title}
-                    </h3>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      {stats.completed && (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 py-1 px-2.5 rounded-full uppercase tracking-wider">
-                          <CheckCircle size={10} />
-                          <span>Attempted</span>
-                        </span>
-                      )}
-                      <span className={`text-[10px] font-extrabold py-1 px-2.5 rounded-full uppercase tracking-wider ${
-                        primaryDifficulty === "Easy"
-                          ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400"
-                          : primaryDifficulty === "Challenging"
-                          ? "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400"
-                          : "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400"
-                      }`}>
-                        {primaryDifficulty}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Estimated parameters */}
-                  <div className="flex items-center gap-4 text-xs font-semibold text-slate-400 font-mono">
-                    <span className="flex items-center gap-1">
-                      <Clock size={13} />
-                      <span>~{estimatedMinutes} Mins</span>
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <HelpCircle size={13} />
-                      <span>{questionCount} Questions</span>
+              <div className="space-y-6 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between bg-slate-50/60 dark:bg-slate-900/10 border border-slate-150 dark:border-slate-800/60 p-4 rounded-2xl">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setSelectedSubSubjectId(null)}
+                      className={`flex items-center gap-1.5 text-xs font-extrabold ${themeClass.primaryText} hover:underline cursor-pointer`}
+                    >
+                      ← Categories
+                    </button>
+                    <span className="text-slate-200 dark:text-slate-800">|</span>
+                    <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+                      {selectedGroup?.name}
                     </span>
                   </div>
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                    {displayChapters.length} {displayChapters.length === 1 ? "Chapter" : "Chapters"}
+                  </span>
+                </div>
 
-                  {/* Best score & dynamic details */}
-                  <div className="flex flex-wrap items-center gap-4 bg-slate-50 dark:bg-slate-800/40 py-3 px-4 rounded-2xl border border-slate-100 dark:border-slate-800/10">
-                    <div className="flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      <Award size={14} className="text-amber-500" />
-                      <span>Best Score:</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-300">
-                        {stats.bestScore > 0 ? `${stats.bestScore}%` : "N/A"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      <Bookmark size={14} className={themeClass.primaryText} fill="currentColor" />
-                      <span>Bookmarked:</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-300">
-                        {stats.bookmarkCount}
-                      </span>
-                    </div>
+                {displayChapters.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic py-4 pl-4 bg-slate-50/50 dark:bg-slate-900/10 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                    No chapters are added to this section yet.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {displayChapters.map((chapter) => renderChapterCard(chapter))}
                   </div>
-                </div>
-
-                {/* Grid of Action Buttons */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-200 dark:border-slate-800/60 mt-6 pt-4">
-                  {/* Primary Start Button */}
-                  <button
-                    onClick={() => onStartExam(data, chapter.id)}
-                    className={`flex items-center justify-center gap-1.5 py-3 px-4 ${themeClass.primaryBg} ${themeClass.primaryHoverBg} text-white text-xs font-bold rounded-xl shadow-sm transition cursor-pointer`}
-                  >
-                    <Play size={13} fill="currentColor" />
-                    <span>Start Test</span>
-                  </button>
-
-                  {/* Revision Review Button */}
-                  <button
-                    onClick={() => onReviseChapter(data)}
-                    disabled={!stats.completed}
-                    className={`flex items-center justify-center gap-1.5 py-3 px-4 text-xs font-bold rounded-xl border transition ${
-                      stats.completed
-                        ? `bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:${themeClass.lightBg} hover:${themeClass.primaryText} border-slate-200 dark:border-slate-800/60 cursor-pointer`
-                        : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-200 dark:border-slate-800/20 cursor-not-allowed opacity-50"
-                    }`}
-                    title={!stats.completed ? "Unlock Quick Study by completing the test at least once" : "Quick Revision Mode"}
-                  >
-                    {stats.completed ? (
-                      <BookOpenCheck size={13} />
-                    ) : (
-                      <Lock size={13} className="text-slate-400" />
-                    )}
-                    <span>Quick Study</span>
-                  </button>
-
-                  {/* Practice Wrong Questions Button */}
-                  <button
-                    onClick={() => onStartExam(data, chapter.id, { onlyWrong: true })}
-                    disabled={stats.wrongCount === 0}
-                    className={`flex items-center justify-center gap-1.5 py-3 px-4 text-xs font-bold rounded-xl transition cursor-pointer border ${
-                      stats.wrongCount > 0
-                        ? "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-950/50 hover:bg-rose-100/60"
-                        : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-200 dark:border-slate-800/20 cursor-not-allowed opacity-50"
-                    }`}
-                  >
-                    <RotateCcw size={13} />
-                    <span>Retry Wrong ({stats.wrongCount})</span>
-                  </button>
-                </div>
+                )}
               </div>
             );
-          })}
+          })()}
         </div>
       )}
     </div>

@@ -10,6 +10,18 @@ export const supabase = createClient(
   supabaseAnonKey || "placeholder-anon-key"
 );
 
+// Check if Supabase has been configured with real, non-placeholder credentials
+export function isSupabaseConfigured(): boolean {
+  if (!supabaseUrl || !supabaseAnonKey) return false;
+  const isPlaceholderUrl = 
+    supabaseUrl === "your-supabase-project-url" || 
+    supabaseUrl.includes("placeholder-url");
+  const isPlaceholderKey = 
+    supabaseAnonKey === "your-supabase-anon-key" || 
+    supabaseAnonKey.includes("placeholder-anon-key");
+  return !isPlaceholderUrl && !isPlaceholderKey;
+}
+
 // Placeholder to avoid breaking the App.tsx import signature
 export const googleProvider = {};
 
@@ -50,7 +62,7 @@ export const auth = {
 };
 
 export async function signUpWithEmail(email: string, password: string, fullName?: string) {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!isSupabaseConfigured()) {
     throw new Error("Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment variables.");
   }
   const { data, error } = await supabase.auth.signUp({
@@ -67,7 +79,7 @@ export async function signUpWithEmail(email: string, password: string, fullName?
 }
 
 export async function signInWithEmail(email: string, password: string) {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!isSupabaseConfigured()) {
     throw new Error("Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment variables.");
   }
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -79,7 +91,7 @@ export async function signInWithEmail(email: string, password: string) {
 }
 
 export async function signInWithPopup(_auth?: any, _provider?: any) {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!isSupabaseConfigured()) {
     alert("Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment variables.");
     return;
   }
@@ -101,7 +113,7 @@ export { signOut as firebaseSignOut };
 
 // Database Helpers
 export async function fetchUserDoc(userId: string): Promise<Partial<AppSettings> | null> {
-  if (!supabaseUrl || !supabaseAnonKey) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from("users")
@@ -129,7 +141,7 @@ export async function fetchUserDoc(userId: string): Promise<Partial<AppSettings>
 }
 
 export async function saveUserDoc(userId: string, settings: AppSettings): Promise<void> {
-  if (!supabaseUrl || !supabaseAnonKey) return;
+  if (!isSupabaseConfigured()) return;
   try {
     const { error } = await supabase
       .from("users")
@@ -152,7 +164,7 @@ export async function saveUserDoc(userId: string, settings: AppSettings): Promis
 }
 
 export async function fetchUserHistory(userId: string): Promise<AttemptHistoryItem[]> {
-  if (!supabaseUrl || !supabaseAnonKey) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from("history")
@@ -189,38 +201,58 @@ export async function fetchUserHistory(userId: string): Promise<AttemptHistoryIt
 }
 
 export async function saveUserHistoryItem(userId: string, item: AttemptHistoryItem): Promise<void> {
-  if (!supabaseUrl || !supabaseAnonKey) return;
+  if (!isSupabaseConfigured()) return;
+  
+  const safeNum = (val: any, def = 0) => {
+    const n = Number(val);
+    return Number.isNaN(n) || val === undefined || val === null ? def : n;
+  };
+
   try {
     const { error } = await supabase
       .from("history")
-      .upsert({
-        id: item.id,
+      .insert({
+        id: item.id || `attempt_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         user_id: userId,
-        subject_id: item.subjectId,
-        subject_name: item.subjectName,
-        chapter_id: item.chapterId,
-        chapter_title: item.chapterTitle,
-        date: item.date,
-        score: item.score,
-        total_questions: item.totalQuestions,
-        correct_count: item.correctCount,
-        wrong_count: item.wrongCount,
-        skipped_count: item.skippedCount,
-        max_score: item.maxScore,
-        accuracy: item.accuracy,
-        time_taken: item.timeTaken,
+        subject_id: item.subjectId || "unknown_subject",
+        subject_name: item.subjectName || "Unknown Subject",
+        chapter_id: item.chapterId || "unknown_chapter",
+        chapter_title: item.chapterTitle || "Unknown Chapter",
+        date: item.date || new Date().toISOString(),
+        score: safeNum(item.score, 0),
+        total_questions: safeNum(item.totalQuestions, 0),
+        correct_count: safeNum(item.correctCount, 0),
+        wrong_count: safeNum(item.wrongCount, 0),
+        skipped_count: safeNum(item.skippedCount, 0),
+        max_score: safeNum(item.maxScore, 100),
+        accuracy: safeNum(item.accuracy, 0),
+        time_taken: safeNum(item.timeTaken, 0),
         is_practice_mode: !!item.isPracticeMode,
         practice_type: item.practiceType || "",
       });
 
-    if (error) throw error;
-  } catch (error) {
-    console.error("Supabase error saving history item:", error);
+    if (error) {
+      // 23505 is PostgreSQL's duplicate key unique constraint violation.
+      // We ignore this because history attempts are immutable and already exist in the database.
+      if (error.code === "23505") {
+        console.log("History item already exists in database, skipping insert:", item.id);
+        return;
+      }
+      console.error("Supabase returned error on inserting history item:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw error;
+    }
+  } catch (error: any) {
+    console.error("Supabase error saving history item:", error?.message || error);
   }
 }
 
 export async function fetchUserBookmarks(userId: string): Promise<BookmarkType[]> {
-  if (!supabaseUrl || !supabaseAnonKey) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from("bookmarks")
@@ -242,8 +274,8 @@ export async function fetchUserBookmarks(userId: string): Promise<BookmarkType[]
 }
 
 export async function saveUserBookmark(userId: string, bookmark: BookmarkType): Promise<void> {
-  if (!supabaseUrl || !supabaseAnonKey) return;
-  const bookmarkId = `${bookmark.subjectId}_${bookmark.chapterId}_${bookmark.questionId}`;
+  if (!isSupabaseConfigured()) return;
+  const bookmarkId = `${userId}_${bookmark.subjectId}_${bookmark.chapterId}_${bookmark.questionId}`;
   try {
     const { error } = await supabase
       .from("bookmarks")
@@ -262,8 +294,8 @@ export async function saveUserBookmark(userId: string, bookmark: BookmarkType): 
 }
 
 export async function deleteUserBookmark(userId: string, bookmark: BookmarkType): Promise<void> {
-  if (!supabaseUrl || !supabaseAnonKey) return;
-  const bookmarkId = `${bookmark.subjectId}_${bookmark.chapterId}_${bookmark.questionId}`;
+  if (!isSupabaseConfigured()) return;
+  const bookmarkId = `${userId}_${bookmark.subjectId}_${bookmark.chapterId}_${bookmark.questionId}`;
   try {
     const { error } = await supabase
       .from("bookmarks")
@@ -278,7 +310,7 @@ export async function deleteUserBookmark(userId: string, bookmark: BookmarkType)
 }
 
 export async function fetchUserWrongQuestions(userId: string): Promise<BookmarkType[]> {
-  if (!supabaseUrl || !supabaseAnonKey) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from("wrong_questions")
@@ -300,8 +332,8 @@ export async function fetchUserWrongQuestions(userId: string): Promise<BookmarkT
 }
 
 export async function saveUserWrongQuestion(userId: string, wrong: BookmarkType): Promise<void> {
-  if (!supabaseUrl || !supabaseAnonKey) return;
-  const wrongId = `${wrong.subjectId}_${wrong.chapterId}_${wrong.questionId}`;
+  if (!isSupabaseConfigured()) return;
+  const wrongId = `${userId}_${wrong.subjectId}_${wrong.chapterId}_${wrong.questionId}`;
   try {
     const { error } = await supabase
       .from("wrong_questions")
@@ -320,8 +352,8 @@ export async function saveUserWrongQuestion(userId: string, wrong: BookmarkType)
 }
 
 export async function deleteUserWrongQuestion(userId: string, wrong: BookmarkType): Promise<void> {
-  if (!supabaseUrl || !supabaseAnonKey) return;
-  const wrongId = `${wrong.subjectId}_${wrong.chapterId}_${wrong.questionId}`;
+  if (!isSupabaseConfigured()) return;
+  const wrongId = `${userId}_${wrong.subjectId}_${wrong.chapterId}_${wrong.questionId}`;
   try {
     const { error } = await supabase
       .from("wrong_questions")
@@ -346,7 +378,7 @@ export interface CustomQuestion {
 }
 
 export async function fetchCustomQuestions(userId: string): Promise<CustomQuestion[]> {
-  if (!supabaseUrl || !supabaseAnonKey) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from("custom_questions")
@@ -368,8 +400,8 @@ export async function saveCustomQuestion(
   questionId: number,
   questionData: any
 ): Promise<void> {
-  if (!supabaseUrl || !supabaseAnonKey) return;
-  const customId = `${subjectId}_${chapterId}_${questionId}`;
+  if (!isSupabaseConfigured()) return;
+  const customId = `${userId}_${subjectId}_${chapterId}_${questionId}`;
   try {
     const { error } = await supabase
       .from("custom_questions")
@@ -391,7 +423,7 @@ export async function saveCustomQuestion(
 
 // Admin Manifest (Custom Subjects & Chapters index)
 export async function fetchAdminManifest(): Promise<any | null> {
-  if (!supabaseUrl || !supabaseAnonKey) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from("admin_manifest")
@@ -408,7 +440,7 @@ export async function fetchAdminManifest(): Promise<any | null> {
 }
 
 export async function saveAdminManifest(manifestData: any): Promise<void> {
-  if (!supabaseUrl || !supabaseAnonKey) return;
+  if (!isSupabaseConfigured()) return;
   try {
     const { error } = await supabase
       .from("admin_manifest")
@@ -427,7 +459,7 @@ export async function saveAdminManifest(manifestData: any): Promise<void> {
 
 // Admin Chapters Data (Custom Questions lists per chapter)
 export async function fetchAdminChapterData(subjectId: string, chapterId: string): Promise<any | null> {
-  if (!supabaseUrl || !supabaseAnonKey) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from("admin_chapters_data")
@@ -444,7 +476,7 @@ export async function fetchAdminChapterData(subjectId: string, chapterId: string
 }
 
 export async function saveAdminChapterData(subjectId: string, chapterId: string, data: any): Promise<void> {
-  if (!supabaseUrl || !supabaseAnonKey) return;
+  if (!isSupabaseConfigured()) return;
   try {
     const { error } = await supabase
       .from("admin_chapters_data")
@@ -459,6 +491,40 @@ export async function saveAdminChapterData(subjectId: string, chapterId: string,
     if (error) throw error;
   } catch (error) {
     console.error("Supabase error saving admin chapter data:", error);
+    throw error;
+  }
+}
+
+export async function clearUserHistoryInDb(userId: string): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const { error } = await supabase
+      .from("history")
+      .delete()
+      .eq("user_id", userId);
+    if (error) throw error;
+  } catch (error) {
+    console.error("Supabase error deleting user history in DB:", error);
+    throw error;
+  }
+}
+
+export async function clearAllUserProgressInDb(userId: string): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const { error: hErr } = await supabase.from("history").delete().eq("user_id", userId);
+    if (hErr) throw hErr;
+
+    const { error: bErr } = await supabase.from("bookmarks").delete().eq("user_id", userId);
+    if (bErr) throw bErr;
+
+    const { error: wErr } = await supabase.from("wrong_questions").delete().eq("user_id", userId);
+    if (wErr) throw wErr;
+
+    const { error: cErr } = await supabase.from("custom_questions").delete().eq("user_id", userId);
+    if (cErr) throw cErr;
+  } catch (error) {
+    console.error("Supabase error clearing all user progress in DB:", error);
     throw error;
   }
 }

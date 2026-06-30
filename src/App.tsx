@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   BookOpen,
   Settings as SettingsIcon,
@@ -70,7 +70,9 @@ import {
   signInWithPopup,
   firebaseSignOut,
   signUpWithEmail,
-  signInWithEmail
+  signInWithEmail,
+  clearUserHistoryInDb,
+  clearAllUserProgressInDb
 } from "./supabase";
 import { getThemeStyles } from "./utils/theme";
 
@@ -83,15 +85,22 @@ import ResultView from "./components/ResultView";
 import ReviewView from "./components/ReviewView";
 import SettingsView from "./components/SettingsView";
 import AdminDashboard from "./components/AdminDashboard";
+import BookmarksView from "./components/BookmarksView";
 
 export default function App() {
   // Global States
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const localSubjectsRef = useRef<Subject[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const [currentView, setCurrentView] = useState<string>("dashboard");
   const [activeSubject, setActiveSubject] = useState<Subject | null>(null);
+
+  const currentActiveSubject = useMemo(() => {
+    if (!activeSubject) return null;
+    return subjects.find((s) => s.id === activeSubject.id) || activeSubject;
+  }, [subjects, activeSubject]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
 
   // Supabase Auth & Sync states
@@ -191,13 +200,51 @@ export default function App() {
 
   const themeClass = useMemo(() => getThemeStyles(settings.theme), [settings.theme]);
 
+  const mergeSubjectsWithLocal = (dbSubjects: Subject[], localSubjectsList: Subject[]) => {
+    return dbSubjects.map((dbSub: Subject) => {
+      const localSub = localSubjectsList.find((s) => s.id === dbSub.id);
+      if (localSub) {
+        const hasSubSubjects = dbSub.subSubjects && dbSub.subSubjects.length > 0;
+        const updatedSubSubjects = hasSubSubjects ? dbSub.subSubjects : localSub.subSubjects;
+        const updatedChapters = dbSub.chapters.map((dbChap) => {
+          const localChap = localSub.chapters.find((c) => c.id === dbChap.id);
+          return {
+            ...dbChap,
+            subSubjectId: (dbChap.subSubjectId !== undefined && dbChap.subSubjectId !== null)
+              ? dbChap.subSubjectId
+              : (localChap?.subSubjectId || ""),
+          };
+        });
+        return {
+          ...dbSub,
+          subSubjects: updatedSubSubjects,
+          chapters: updatedChapters,
+        };
+      }
+      return dbSub;
+    });
+  };
+
   // Load Manifest on Mount
   useEffect(() => {
     const loadManifest = async () => {
+      let localSubjects: Subject[] = [];
+      try {
+        const res = await fetch("/data/manifest.json");
+        if (res.ok) {
+          const data = await res.json();
+          localSubjects = data.subjects || [];
+          localSubjectsRef.current = localSubjects;
+        }
+      } catch (err) {
+        console.error("Failed to load local manifest fallback:", err);
+      }
+
       try {
         const dbManifest = await fetchAdminManifest();
         if (dbManifest && dbManifest.subjects) {
-          setSubjects(dbManifest.subjects);
+          const mergedSubjects = mergeSubjectsWithLocal(dbManifest.subjects, localSubjects);
+          setSubjects(mergedSubjects);
           setLoading(false);
           return;
         }
@@ -205,20 +252,13 @@ export default function App() {
         console.error("Failed to load admin manifest from Supabase:", err);
       }
 
-      fetch("/data/manifest.json")
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to fetch manifest");
-          return res.json();
-        })
-        .then((data) => {
-          setSubjects(data.subjects || []);
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error("Failed to load exam app manifest", err);
-          setError("Failed to load application index. Please make sure data files exist.");
-          setLoading(false);
-        });
+      if (localSubjects.length > 0) {
+        setSubjects(localSubjects);
+        setLoading(false);
+      } else {
+        setError("Failed to load application index. Please make sure data files exist.");
+        setLoading(false);
+      }
     };
 
     loadManifest();
@@ -230,12 +270,11 @@ export default function App() {
       setCurrentUser(firebaseUser);
       if (firebaseUser) {
         setIsSyncing(true);
-        try {
-          const uid = firebaseUser.uid;
+        const uid = firebaseUser.uid;
 
-          // 1. Fetch user doc (settings)
+        // 1. Fetch user doc (settings)
+        try {
           const dbSettings = await fetchUserDoc(uid);
-          let activeSettings = settings;
           if (dbSettings) {
             const merged = {
               ...settings,
@@ -244,7 +283,6 @@ export default function App() {
             };
             setSettings(merged);
             saveAppSettings(merged);
-            activeSettings = merged;
           } else {
             // First time login: push current settings to Firestore
             const initialSettings = {
@@ -254,10 +292,13 @@ export default function App() {
             await saveUserDoc(uid, initialSettings);
             setSettings(initialSettings);
             saveAppSettings(initialSettings);
-            activeSettings = initialSettings;
           }
+        } catch (err) {
+          console.error("Error syncing settings with Supabase:", err);
+        }
 
-          // 2. Fetch history and merge
+        // 2. Fetch history and merge
+        try {
           const dbHistory = await fetchUserHistory(uid);
           const mergedHistory = [...history];
           dbHistory.forEach((dbItem) => {
@@ -267,14 +308,22 @@ export default function App() {
           });
           for (const localItem of history) {
             if (!dbHistory.some((dbH) => dbH.id === localItem.id)) {
-              await saveUserHistoryItem(uid, localItem);
+              try {
+                await saveUserHistoryItem(uid, localItem);
+              } catch (saveErr) {
+                console.error("Failed to sync individual history item:", localItem.id, saveErr);
+              }
             }
           }
           mergedHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
           setHistory(mergedHistory);
           saveAttemptHistory(mergedHistory);
+        } catch (err) {
+          console.error("Error syncing history with Supabase:", err);
+        }
 
-          // 3. Fetch bookmarks and merge
+        // 3. Fetch bookmarks and merge
+        try {
           const dbBookmarks = await fetchUserBookmarks(uid);
           const mergedBookmarks = [...bookmarks];
           dbBookmarks.forEach((dbB) => {
@@ -289,8 +338,12 @@ export default function App() {
           }
           setBookmarks(mergedBookmarks);
           saveBookmarks(mergedBookmarks);
+        } catch (err) {
+          console.error("Error syncing bookmarks with Supabase:", err);
+        }
 
-          // 4. Fetch wrong questions and merge
+        // 4. Fetch wrong questions and merge
+        try {
           const dbWrongs = await fetchUserWrongQuestions(uid);
           const mergedWrongs = [...wrongQuestions];
           dbWrongs.forEach((dbW) => {
@@ -305,17 +358,20 @@ export default function App() {
           }
           setWrongQuestions(mergedWrongs);
           saveWrongQuestions(mergedWrongs);
+        } catch (err) {
+          console.error("Error syncing wrong questions with Supabase:", err);
+        }
 
-          // 5. Fetch custom question overrides from Supabase
+        // 5. Fetch custom question overrides from Supabase
+        try {
           const dbCustoms = await fetchCustomQuestions(uid);
           const customsMap: Record<string, Question> = {};
           dbCustoms.forEach((cq) => {
             customsMap[`${cq.subject_id}_${cq.chapter_id}_${cq.question_id}`] = cq.question_data;
           });
           setCustomQuestions(customsMap);
-
         } catch (err) {
-          console.error("Error syncing with Supabase: ", err);
+          console.error("Error syncing custom questions with Supabase:", err);
         } finally {
           setIsSyncing(false);
         }
@@ -326,6 +382,7 @@ export default function App() {
         setBookmarks(getBookmarks());
         setWrongQuestions(getWrongQuestions());
         setCustomQuestions({});
+        setIsSyncing(false);
       }
     });
 
@@ -556,6 +613,12 @@ export default function App() {
       testQuestions = testQuestions.filter((q) => wrongIds.has(q.id));
     }
 
+    if (options?.onlyBookmarked) {
+      const bookmarkedList = bookmarks.filter((b) => b.subjectId === targetSubject.id && b.chapterId === chapterId);
+      const bookmarkedIds = new Set(bookmarkedList.map((b) => b.questionId));
+      testQuestions = testQuestions.filter((q) => bookmarkedIds.has(q.id));
+    }
+
     if (testQuestions.length === 0) {
       alert("No questions found matching criteria.");
       return;
@@ -689,6 +752,33 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Launch custom practice test
+  const handleStartCustomPractice = (practiceQs: Question[], chapterTitle: string, practiceType: string = "bookmarks") => {
+    if (practiceQs.length === 0) {
+      alert("No questions matched the practice configuration.");
+      return;
+    }
+    const totalSeconds = practiceQs.length * 30; // 30s average per question
+    const session: ExamSession = {
+      subjectId: "practice",
+      chapterId: "custom_bookmarks",
+      subjectName: "Bookmarks Study",
+      chapterTitle,
+      questions: practiceQs,
+      userAnswers: {},
+      markedForReview: {},
+      visitedQuestions: {},
+      timeRemaining: totalSeconds,
+      totalTime: totalSeconds,
+      isPracticeMode: true,
+      practiceType: practiceType as any,
+    };
+
+    setActiveSession(session);
+    saveResumableSession(session);
+    setCurrentView("exam");
   };
 
   // Submit Exam Handler
@@ -893,9 +983,40 @@ export default function App() {
   };
 
   // Wipe History only
-  const handleClearHistoryOnly = () => {
+  const handleClearHistoryOnly = async () => {
     setHistory([]);
     saveAttemptHistory([]);
+    if (currentUser) {
+      try {
+        await clearUserHistoryInDb(currentUser.uid);
+      } catch (err) {
+        console.error("Failed to clear history from Supabase:", err);
+      }
+    }
+  };
+
+  // Full Reset Progress & Settings
+  const handleFullResetProgress = async () => {
+    // Clear state
+    setHistory([]);
+    setBookmarks([]);
+    setWrongQuestions([]);
+    setCustomQuestions({});
+    // Reset Settings
+    setSettings(DEFAULT_SETTINGS);
+    saveAppSettings(DEFAULT_SETTINGS);
+    
+    // Clear localStorage
+    clearUserData();
+    
+    if (currentUser) {
+      try {
+        await clearAllUserProgressInDb(currentUser.uid);
+        await saveUserDoc(currentUser.uid, DEFAULT_SETTINGS);
+      } catch (err) {
+        console.error("Failed to clear all progress from Supabase:", err);
+      }
+    }
   };
 
   // Global Search Engine
@@ -1039,6 +1160,7 @@ export default function App() {
             <nav className="space-y-1 flex-1" id="sidebar-nav">
               {renderSidebarItem("dashboard", "Dashboard", <LayoutDashboard size={18} />)}
               {renderSidebarItem("subjects", "Subjects", <BookOpen size={18} />)}
+              {renderSidebarItem("bookmarks", "Bookmarks", <Bookmark size={18} />)}
               {renderSidebarItem("settings", "Settings", <SettingsIcon size={18} />)}
               {currentUser?.email === "anupanmolhansda1@gmail.com" &&
                 renderSidebarItem("admin", "Admin Zone", <Shield size={18} />)}
@@ -1214,6 +1336,17 @@ export default function App() {
               </button>
               <button
                 onClick={() => {
+                  setCurrentView("bookmarks");
+                  setActiveSubject(null);
+                  setIsSearching(false);
+                }}
+                className={`flex flex-col items-center gap-1 p-2 ${currentView === "bookmarks" ? themeClass.primaryText : ""}`}
+              >
+                <Bookmark size={18} />
+                <span className="text-[9px] font-bold">Bookmarks</span>
+              </button>
+              <button
+                onClick={() => {
                   setCurrentView("settings");
                   setActiveSubject(null);
                   setIsSearching(false);
@@ -1332,10 +1465,30 @@ export default function App() {
                           <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Matching Bookmarked Questions</h3>
                           <div className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-2xl overflow-hidden">
                             {searchResults.questions.map((item, idx) => (
-                              <div key={idx} className="p-4 space-y-1 bg-white dark:bg-slate-900">
-                                <span className={`text-[9px] font-bold ${themeClass.primaryText} ${themeClass.lightBg} py-0.5 px-2 rounded-md`}>
-                                  {item.subjectName} • {item.chapterTitle}
-                                </span>
+                              <button
+                                key={idx}
+                                onClick={async () => {
+                                  const subj = subjects.find((s) => s.name === item.subjectName);
+                                  if (!subj) return;
+                                  const chap = subj.chapters.find((c) => c.title === item.chapterTitle);
+                                  if (!chap) return;
+                                  setSearchQuery("");
+                                  setIsSearching(false);
+                                  const data = await loadChapterData(subj.id, chap.id, subj.folder, chap.file);
+                                  if (data) {
+                                    handleStartExam(data, chap.id, { onlyBookmarked: true });
+                                  }
+                                }}
+                                className="w-full text-left p-4 space-y-1 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition cursor-pointer"
+                              >
+                                <div className="flex justify-between items-start">
+                                  <span className={`text-[9px] font-bold ${themeClass.primaryText} ${themeClass.lightBg} py-0.5 px-2 rounded-md`}>
+                                    {item.subjectName} • {item.chapterTitle}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                    Practice Bookmark
+                                  </span>
+                                </div>
                                 <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 pt-1 leading-relaxed">
                                   {item.question.question}
                                 </h4>
@@ -1346,7 +1499,7 @@ export default function App() {
                                     </span>
                                   ))}
                                 </div>
-                              </div>
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -1401,9 +1554,9 @@ export default function App() {
                     />
                   )}
 
-                  {currentView === "chapters" && activeSubject && (
+                  {currentView === "chapters" && currentActiveSubject && (
                     <ChaptersView
-                      subject={activeSubject}
+                      subject={currentActiveSubject}
                       history={history}
                       bookmarks={bookmarks}
                       wrongQuestions={wrongQuestions}
@@ -1479,11 +1632,26 @@ export default function App() {
                     />
                   )}
 
+                  {currentView === "bookmarks" && (
+                    <BookmarksView
+                      subjects={subjects}
+                      bookmarks={bookmarks}
+                      theme={settings.theme}
+                      fontSize={settings.fontSize}
+                      loadChapterData={loadChapterData}
+                      onToggleBookmark={(subId, chapId, qId) => handleToggleBookmark(qId, { subjectId: subId, chapterId: chapId })}
+                      onStartCustomPractice={handleStartCustomPractice}
+                      onBack={() => setCurrentView("dashboard")}
+                    />
+                  )}
+
                   {currentView === "settings" && (
                     <SettingsView
                       settings={settings}
                       onUpdateSettings={handleUpdateSettings}
                       onClearHistoryOnly={handleClearHistoryOnly}
+                      onFullReset={handleFullResetProgress}
+                      currentUser={currentUser}
                       isInstallable={!!deferredPrompt}
                       isInstalled={isPWAInstalled}
                       onInstallPWA={handleInstallPWA}
@@ -1498,7 +1666,8 @@ export default function App() {
                         try {
                           const dbManifest = await fetchAdminManifest();
                           if (dbManifest && dbManifest.subjects) {
-                            setSubjects(dbManifest.subjects);
+                            const merged = mergeSubjectsWithLocal(dbManifest.subjects, localSubjectsRef.current);
+                            setSubjects(merged);
                           }
                         } catch (err) {
                           console.error("Error refreshing manifest after publishing:", err);

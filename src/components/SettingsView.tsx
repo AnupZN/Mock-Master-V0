@@ -18,11 +18,14 @@ import {
 } from "lucide-react";
 import { AppSettings } from "../types";
 import { exportUserData, importUserData, clearAllProgress } from "../utils";
+import { signInWithEmail } from "../supabase";
 
 interface SettingsViewProps {
   settings: AppSettings;
   onUpdateSettings: (settings: AppSettings) => void;
-  onClearHistoryOnly: () => void;
+  onClearHistoryOnly: () => Promise<void>;
+  onFullReset: () => Promise<void>;
+  currentUser: any;
   isInstallable: boolean;
   isInstalled: boolean;
   onInstallPWA: () => void;
@@ -32,6 +35,8 @@ export default function SettingsView({
   settings,
   onUpdateSettings,
   onClearHistoryOnly,
+  onFullReset,
+  currentUser,
   isInstallable,
   isInstalled,
   onInstallPWA,
@@ -39,6 +44,12 @@ export default function SettingsView({
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState<boolean>(false);
   const [importStatus, setImportStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Secure validation states
+  const [typedPassword, setTypedPassword] = useState<string>("");
+  const [confirmText, setConfirmText] = useState<string>("");
+  const [confirmError, setConfirmError] = useState<string>("");
+  const [isValidating, setIsValidating] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,15 +109,106 @@ export default function SettingsView({
     reader.readAsText(file);
   };
 
-  const handleFullReset = () => {
-    clearAllProgress();
-    setShowResetConfirm(false);
-    window.location.reload();
+  const resetConfirmInputs = () => {
+    setTypedPassword("");
+    setConfirmText("");
+    setConfirmError("");
+    setIsValidating(false);
   };
 
-  const handleClearHistory = () => {
-    onClearHistoryOnly();
-    setShowClearHistoryConfirm(false);
+  const handleFullReset = async () => {
+    setConfirmError("");
+    if (currentUser) {
+      const input = typedPassword.trim();
+      if (!input) {
+        setConfirmError("Please enter your account password or type 'RESET' to confirm.");
+        return;
+      }
+      setIsValidating(true);
+      
+      // If they typed 'RESET' directly, bypass password authentication
+      if (input.toUpperCase() === "RESET") {
+        try {
+          await onFullReset();
+          setShowResetConfirm(false);
+          resetConfirmInputs();
+          window.location.reload();
+        } catch (err: any) {
+          setConfirmError(err.message || "An error occurred while resetting.");
+        } finally {
+          setIsValidating(false);
+        }
+        return;
+      }
+
+      // Otherwise, verify password via Supabase
+      try {
+        await signInWithEmail(currentUser.email, typedPassword);
+        await onFullReset();
+        setShowResetConfirm(false);
+        resetConfirmInputs();
+        window.location.reload();
+      } catch (err: any) {
+        setConfirmError(err.message || "Incorrect password. Please verify and try again.");
+      } finally {
+        setIsValidating(false);
+      }
+    } else {
+      if (confirmText.trim().toUpperCase() !== "RESET") {
+        setConfirmError("Please type 'RESET' to confirm.");
+        return;
+      }
+      await onFullReset();
+      setShowResetConfirm(false);
+      resetConfirmInputs();
+      window.location.reload();
+    }
+  };
+
+  const handleClearHistory = async () => {
+    setConfirmError("");
+    if (currentUser) {
+      const input = typedPassword.trim();
+      if (!input) {
+        setConfirmError("Please enter your account password or type 'WIPE' to confirm.");
+        return;
+      }
+      setIsValidating(true);
+
+      // If they typed 'WIPE' directly, bypass password authentication
+      if (input.toUpperCase() === "WIPE") {
+        try {
+          await onClearHistoryOnly();
+          setShowClearHistoryConfirm(false);
+          resetConfirmInputs();
+        } catch (err: any) {
+          setConfirmError(err.message || "An error occurred while wiping history.");
+        } finally {
+          setIsValidating(false);
+        }
+        return;
+      }
+
+      // Otherwise, verify password via Supabase
+      try {
+        await signInWithEmail(currentUser.email, typedPassword);
+        await onClearHistoryOnly();
+        setShowClearHistoryConfirm(false);
+        resetConfirmInputs();
+      } catch (err: any) {
+        setConfirmError(err.message || "Incorrect password. Please verify and try again.");
+      } finally {
+        setIsValidating(false);
+      }
+    } else {
+      if (confirmText.trim().toUpperCase() !== "WIPE") {
+        setConfirmError("Please type 'WIPE' to confirm.");
+        return;
+      }
+      await onClearHistoryOnly();
+      setShowClearHistoryConfirm(false);
+      resetConfirmInputs();
+    }
   };
 
   return (
@@ -424,22 +526,74 @@ export default function SettingsView({
             <div className="text-center space-y-1.5">
               <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">Wipe Attempt Logs?</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Are you sure you want to clear your full history of exam attempts? Your custom settings and bookmarked questions will be safely kept.
+                Are you sure you want to clear your full history of exam attempts? Your bookmarks and settings will remain safe.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-2">
+            {/* Verification Challenge */}
+            <div className="space-y-2 pt-1">
+              {currentUser ? (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                    Verification (Enter Password or Type "WIPE")
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter password or WIPE"
+                    value={typedPassword}
+                    onChange={(e) => setTypedPassword(e.target.value)}
+                    disabled={isValidating}
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                    Type "WIPE" to confirm
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="WIPE"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/30 font-bold tracking-wider text-center text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+              )}
+
+              {confirmError && (
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold text-center mt-1">
+                  ⚠️ {confirmError}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
               <button
-                onClick={() => setShowClearHistoryConfirm(false)}
-                className="py-3 px-4 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-100 cursor-pointer border border-slate-100 dark:border-slate-800"
+                type="button"
+                onClick={() => {
+                  setShowClearHistoryConfirm(false);
+                  resetConfirmInputs();
+                }}
+                disabled={isValidating}
+                className="py-3 px-4 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 cursor-pointer border border-slate-100 dark:border-slate-800 disabled:opacity-50"
               >
                 Keep Logs
               </button>
               <button
+                type="button"
                 onClick={handleClearHistory}
-                className="py-3 px-4 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-500 cursor-pointer shadow-md"
+                disabled={isValidating}
+                className="py-3 px-4 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-500 cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
-                Wipe Logs
+                {isValidating ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <span>Wipe Logs</span>
+                )}
               </button>
             </div>
           </div>
@@ -461,18 +615,70 @@ export default function SettingsView({
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-2">
+            {/* Verification Challenge */}
+            <div className="space-y-2 pt-1">
+              {currentUser ? (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                    Verification (Enter Password or Type "RESET")
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter password or RESET"
+                    value={typedPassword}
+                    onChange={(e) => setTypedPassword(e.target.value)}
+                    disabled={isValidating}
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                    Type "RESET" to confirm
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="RESET"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/30 font-bold tracking-wider text-center text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+              )}
+
+              {confirmError && (
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold text-center mt-1">
+                  ⚠️ {confirmError}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
               <button
-                onClick={() => setShowResetConfirm(false)}
-                className="py-3 px-4 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-100 cursor-pointer border border-slate-100 dark:border-slate-800"
+                type="button"
+                onClick={() => {
+                  setShowResetConfirm(false);
+                  resetConfirmInputs();
+                }}
+                disabled={isValidating}
+                className="py-3 px-4 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 cursor-pointer border border-slate-100 dark:border-slate-800 disabled:opacity-50"
               >
-                Keep My Progress
+                Keep Progress
               </button>
               <button
+                type="button"
                 onClick={handleFullReset}
-                className="py-3 px-4 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-500 cursor-pointer shadow-md"
+                disabled={isValidating}
+                className="py-3 px-4 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-500 cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
-                Reset Everything
+                {isValidating ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <span>Reset Everything</span>
+                )}
               </button>
             </div>
           </div>

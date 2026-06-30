@@ -397,7 +397,7 @@ export default function DashboardView({
 
             {/* Bookmarked Questions practice */}
             <button
-              onClick={() => onStartPractice("bookmarks")}
+              onClick={() => onNavigate("bookmarks")}
               className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 hover:bg-amber-50/50 dark:hover:bg-amber-950/10 hover:border-amber-100 rounded-2xl transition duration-150 cursor-pointer"
             >
               <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-xl">

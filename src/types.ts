@@ -19,10 +19,16 @@ export interface Question {
   };
 }
 
+export interface SubSubject {
+  id: string;
+  name: string;
+}
+
 export interface Chapter {
   id: string;
   title: string;
   file: string;
+  subSubjectId?: string;
 }
 
 export interface Subject {
@@ -31,6 +37,7 @@ export interface Subject {
   icon: string;
   folder: string;
   chapters: Chapter[];
+  subSubjects?: SubSubject[];
 }
 
 export interface ChapterData {

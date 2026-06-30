@@ -20,7 +20,7 @@ import {
   Upload,
   X
 } from "lucide-react";
-import { Subject, ChapterData, Question } from "../types";
+import { Subject, ChapterData, Question, Chapter, SubSubject } from "../types";
 import {
   saveAdminManifest,
   saveAdminChapterData,
@@ -340,11 +340,16 @@ export default function AdminDashboard({
 
   // Chapter Edit / Add States
   const [showChapterModal, setShowChapterModal] = useState(false);
-  const [editingChapter, setEditingChapter] = useState<{ id: string; title: string; file: string } | null>(null);
+  const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
   const [chapId, setChapId] = useState("");
   const [chapTitle, setChapTitle] = useState("");
   const [chapFile, setChapFile] = useState("");
   const [chapTimePerQuestion, setChapTimePerQuestion] = useState(60);
+  const [chapSubSubjectId, setChapSubSubjectId] = useState("");
+
+  // Sub-subject Management States
+  const [showSubSubjectManager, setShowSubSubjectManager] = useState(false);
+  const [newSubSubjectName, setNewSubSubjectName] = useState("");
 
   // Question Edit / Add States
   const [showQuestionModal, setShowQuestionModal] = useState(false);
@@ -380,6 +385,24 @@ export default function AdminDashboard({
   useEffect(() => {
     setSubjectsList(JSON.parse(JSON.stringify(initialSubjects)));
   }, [initialSubjects]);
+
+  // Synchronize selectedSubject and selectedChapter with subjectsList changes safely
+  useEffect(() => {
+    if (selectedSubject) {
+      const updatedSubj = subjectsList.find((s) => s.id === selectedSubject.id);
+      if (updatedSubj) {
+        if (JSON.stringify(updatedSubj) !== JSON.stringify(selectedSubject)) {
+          setSelectedSubject(updatedSubj);
+        }
+        if (selectedChapter) {
+          const updatedChap = updatedSubj.chapters?.find((c) => c.id === selectedChapter.id);
+          if (updatedChap && JSON.stringify(updatedChap) !== JSON.stringify(selectedChapter)) {
+            setSelectedChapter(updatedChap);
+          }
+        }
+      }
+    }
+  }, [subjectsList, selectedSubject, selectedChapter]);
 
   // Handle select subject
   const handleSelectSubject = (subj: Subject) => {
@@ -527,6 +550,55 @@ export default function AdminDashboard({
     });
   };
 
+  // Add a Sub-subject to current active Subject
+  const handleAddSubSubject = () => {
+    if (!selectedSubject) return;
+    if (!newSubSubjectName.trim()) return;
+
+    const subName = newSubSubjectName.trim();
+    // Generate a clean slug-like unique ID
+    const subId = subName.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/(^_+|_+$)/g, "");
+    
+    const currentSubSubjects = selectedSubject.subSubjects || [];
+    if (currentSubSubjects.some((s) => s.id === subId)) {
+      alert("A sub-subject with a similar name already exists.");
+      return;
+    }
+
+    const newSub: SubSubject = { id: subId, name: subName };
+    const updatedSubSubjects = [...currentSubSubjects, newSub];
+
+    const updatedSubj = { ...selectedSubject, subSubjects: updatedSubSubjects };
+    setSubjectsList((prev) => prev.map((s) => (s.id === selectedSubject.id ? updatedSubj : s)));
+    setSelectedSubject(updatedSubj);
+    setNewSubSubjectName("");
+  };
+
+  // Delete a Sub-subject from current active Subject
+  const handleDeleteSubSubject = (subId: string) => {
+    if (!selectedSubject) return;
+    
+    if (!confirm("Are you sure you want to delete this sub-subject? Chapters belonging to this sub-subject will be unassigned but NOT deleted.")) {
+      return;
+    }
+
+    const currentSubSubjects = selectedSubject.subSubjects || [];
+    const updatedSubSubjects = currentSubSubjects.filter((s) => s.id !== subId);
+
+    // Unassign chapters from this sub-subject
+    const updatedChapters = (selectedSubject.chapters || []).map((chap) => {
+      if (chap.subSubjectId === subId) {
+        const { subSubjectId, ...rest } = chap;
+        return rest;
+      }
+      return chap;
+    });
+
+    const updatedSubj = { ...selectedSubject, subSubjects: updatedSubSubjects, chapters: updatedChapters };
+    setSubjectsList((prev) => prev.map((s) => (s.id === selectedSubject.id ? updatedSubj : s)));
+    setSelectedSubject(updatedSubj);
+  };
+
   // Save Chapter
   const handleSaveChapter = () => {
     if (!selectedSubject) return;
@@ -540,7 +612,9 @@ export default function AdminDashboard({
     if (editingChapter) {
       // Edit existing chapter in Subject
       const updated = updatedChapters.map((c) =>
-        c.id === editingChapter.id ? { id: chapId, title: chapTitle, file: chapFile } : c
+        c.id === editingChapter.id
+          ? { id: chapId, title: chapTitle, file: chapFile, subSubjectId: chapSubSubjectId }
+          : c
       );
       const updatedSubj = { ...selectedSubject, chapters: updated };
       setSubjectsList((prev) => prev.map((s) => (s.id === selectedSubject.id ? updatedSubj : s)));
@@ -548,7 +622,7 @@ export default function AdminDashboard({
 
       // Update in-memory chapter data title/time
       if (selectedChapter?.id === editingChapter.id) {
-        setSelectedChapter({ id: chapId, title: chapTitle, file: chapFile });
+        setSelectedChapter({ id: chapId, title: chapTitle, file: chapFile, subSubjectId: chapSubSubjectId });
         if (chapterData) {
           setChapterData({
             ...chapterData,
@@ -559,7 +633,7 @@ export default function AdminDashboard({
       }
     } else {
       // Create new chapter inside active Subject
-      const newChap = { id: chapId, title: chapTitle, file: chapFile };
+      const newChap = { id: chapId, title: chapTitle, file: chapFile, subSubjectId: chapSubSubjectId };
       const updated = [...updatedChapters, newChap];
       const updatedSubj = { ...selectedSubject, chapters: updated };
       setSubjectsList((prev) => prev.map((s) => (s.id === selectedSubject.id ? updatedSubj : s)));
@@ -582,12 +656,13 @@ export default function AdminDashboard({
   };
 
   // Open Edit Chapter Modal
-  const handleOpenEditChapter = (chap: { id: string; title: string; file: string }, e: React.MouseEvent) => {
+  const handleOpenEditChapter = (chap: Chapter, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingChapter(chap);
     setChapId(chap.id);
     setChapTitle(chap.title);
     setChapFile(chap.file);
+    setChapSubSubjectId(chap.subSubjectId || "");
     setChapTimePerQuestion(chapterData?.timePerQuestion || 60);
     setShowChapterModal(true);
   };
@@ -598,6 +673,7 @@ export default function AdminDashboard({
     setChapId("chapter" + String((selectedSubject?.chapters?.length || 0) + 1).padStart(2, "0"));
     setChapTitle("");
     setChapFile(`chapter${String((selectedSubject?.chapters?.length || 0) + 1).padStart(2, "0")}.json`);
+    setChapSubSubjectId("");
     setChapTimePerQuestion(60);
     setShowChapterModal(true);
   };
@@ -882,8 +958,8 @@ export default function AdminDashboard({
 
           {/* List of Chapters for Selected Subject */}
           {selectedSubject && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
                 <h2 className="text-lg font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
                   <ListPlus size={18} /> Chapters
                 </h2>
@@ -895,43 +971,168 @@ export default function AdminDashboard({
                 </button>
               </div>
 
+              {/* Sub-subjects Configuration Panel */}
+              <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-150 dark:border-slate-850/80 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>⚙️</span> Sub-subjects Management
+                  </h4>
+                  <button
+                    onClick={() => setShowSubSubjectManager(!showSubSubjectManager)}
+                    className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    {showSubSubjectManager ? "Hide Settings" : `Manage (${selectedSubject.subSubjects?.length || 0})`}
+                  </button>
+                </div>
+
+                {showSubSubjectManager && (
+                  <div className="space-y-3 pt-1 animate-in fade-in duration-150">
+                    {/* Add new sub-subject form */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newSubSubjectName}
+                        onChange={(e) => setNewSubSubjectName(e.target.value)}
+                        placeholder="New sub-subject, e.g. Ancient History"
+                        className="flex-1 text-xs p-2 rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                      <button
+                        onClick={handleAddSubSubject}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus size={12} /> Add
+                      </button>
+                    </div>
+
+                    {/* Sub-subjects list */}
+                    {(!selectedSubject.subSubjects || selectedSubject.subSubjects.length === 0) ? (
+                      <p className="text-[11px] text-slate-400 text-center py-1">No sub-subjects added yet. Type a name above to categorize chapters.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                        {selectedSubject.subSubjects.map((subSubj) => (
+                          <span
+                            key={subSubj.id}
+                            className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-slate-600 dark:text-slate-300 shadow-xs"
+                          >
+                            <span>{subSubj.name}</span>
+                            <button
+                              onClick={() => handleDeleteSubSubject(subSubj.id)}
+                              className="p-0.5 text-slate-400 hover:text-rose-500 rounded-full transition cursor-pointer"
+                              title="Delete sub-subject"
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Chapters List */}
               {(!selectedSubject.chapters || selectedSubject.chapters.length === 0) ? (
                 <div className="text-center py-8 text-slate-400 text-xs">
                   No chapters yet. Click "New Chapter" to add one!
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {selectedSubject.chapters.map((chap) => (
-                    <div
-                      key={chap.id}
-                      onClick={() => setSelectedChapter(chap)}
-                      className={`p-3.5 rounded-2xl border transition flex items-center justify-between cursor-pointer ${
-                        selectedChapter?.id === chap.id
-                          ? "bg-slate-100 dark:bg-slate-850 border-slate-300 dark:border-slate-700 font-extrabold"
-                          : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800/40 hover:border-slate-200 dark:hover:border-slate-800"
-                      }`}
-                    >
-                      <div className="min-w-0 pr-2">
-                        <h4 className="text-xs text-slate-700 dark:text-slate-300 truncate">{chap.title}</h4>
-                        <span className="text-[10px] text-slate-400 font-mono">File: {chap.file}</span>
+                <div className="space-y-4 pt-2">
+                  {(() => {
+                    const hasSubSubjects = selectedSubject.subSubjects && selectedSubject.subSubjects.length > 0;
+                    
+                    const renderChapterRow = (chap: Chapter) => (
+                      <div
+                        key={chap.id}
+                        onClick={() => setSelectedChapter(chap)}
+                        className={`p-3.5 rounded-2xl border transition flex items-center justify-between cursor-pointer ${
+                          selectedChapter?.id === chap.id
+                            ? "bg-slate-100 dark:bg-slate-850 border-slate-300 dark:border-slate-700 font-extrabold"
+                            : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800/45 hover:border-slate-200 dark:hover:border-slate-850"
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <h4 className="text-xs text-slate-700 dark:text-slate-300 truncate">{chap.title}</h4>
+                          <span className="text-[10px] text-slate-400 font-mono">File: {chap.file}</span>
+                        </div>
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => handleOpenEditChapter(chap, e)}
+                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-indigo-500 rounded-md transition"
+                            title="Edit Chapter"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteChapterClick(chap.id, chap.title, e)}
+                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-md transition"
+                            title="Delete Chapter"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => handleOpenEditChapter(chap, e)}
-                          className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-indigo-500 rounded-md transition"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteChapterClick(chap.id, chap.title, e)}
-                          className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-md transition"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                    );
+
+                    if (!hasSubSubjects) {
+                      // Standard flat list of chapters
+                      return (
+                        <div className="space-y-2">
+                          {selectedSubject.chapters.map((chap) => renderChapterRow(chap))}
+                        </div>
+                      );
+                    }
+
+                    // Group chapters by sub-subject
+                    const subSubjectsList = selectedSubject.subSubjects || [];
+                    const chaptersBySubSubject: Record<string, Chapter[]> = {};
+                    const unassignedChapters: Chapter[] = [];
+
+                    selectedSubject.chapters.forEach((chap) => {
+                      if (chap.subSubjectId && subSubjectsList.some((s) => s.id === chap.subSubjectId)) {
+                        if (!chaptersBySubSubject[chap.subSubjectId]) {
+                          chaptersBySubSubject[chap.subSubjectId] = [];
+                        }
+                        chaptersBySubSubject[chap.subSubjectId].push(chap);
+                      } else {
+                        unassignedChapters.push(chap);
+                      }
+                    });
+
+                    return (
+                      <div className="space-y-4">
+                        {subSubjectsList.map((sub) => {
+                          const chaps = chaptersBySubSubject[sub.id] || [];
+                          return (
+                            <div key={sub.id} className="space-y-1.5">
+                              <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 pl-1 flex items-center gap-1">
+                                <span>📁</span> {sub.name} ({chaps.length})
+                              </h5>
+                              {chaps.length === 0 ? (
+                                <div className="text-center py-3 text-slate-400 dark:text-slate-600 text-[10px] bg-slate-50/50 dark:bg-slate-900/10 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                                  No chapters in this section
+                                </div>
+                              ) : (
+                                <div className="space-y-2 pl-2.5 border-l border-slate-200 dark:border-slate-800">
+                                  {chaps.map((chap) => renderChapterRow(chap))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {unassignedChapters.length > 0 && (
+                          <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 pl-1 flex items-center gap-1">
+                              <span>📂</span> General / Unassigned ({unassignedChapters.length})
+                            </h5>
+                            <div className="space-y-2">
+                              {unassignedChapters.map((chap) => renderChapterRow(chap))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -1218,6 +1419,24 @@ export default function AdminDashboard({
                   placeholder="e.g. chapter03.json"
                 />
               </div>
+
+              {selectedSubject?.subSubjects && selectedSubject.subSubjects.length > 0 && (
+                <div>
+                  <label className="text-xs font-bold text-slate-400">Sub-subject Grouping (Optional)</label>
+                  <select
+                    value={chapSubSubjectId}
+                    onChange={(e) => setChapSubSubjectId(e.target.value)}
+                    className="w-full text-sm p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 mt-1"
+                  >
+                    <option value="">-- None (No Grouping) --</option>
+                    {selectedSubject.subSubjects.map((sub) => (
+                      <option key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
