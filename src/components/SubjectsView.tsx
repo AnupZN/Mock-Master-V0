@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { BookOpen, Layers, Award, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Subject, AttemptHistoryItem } from "../types";
 import { getThemeStyles } from "../utils/theme";
+import { supabase, isSupabaseConfigured } from "../supabase";
 
 interface SubjectsViewProps {
   subjects: Subject[];
@@ -12,6 +13,107 @@ interface SubjectsViewProps {
 
 export default function SubjectsView({ subjects, history, theme, onSelectSubject }: SubjectsViewProps) {
   const themeClass = useMemo(() => getThemeStyles(theme), [theme]);
+  const [dynamicQuestionCounts, setDynamicQuestionCounts] = useState<Record<string, number>>({});
+
+  // Fetch true live counts from Supabase and local sources dynamically
+  useEffect(() => {
+    let active = true;
+    const loadCounts = async () => {
+      const counts: Record<string, number> = {};
+
+      // 1. Initialize with default fallback counts
+      subjects.forEach((subj) => {
+        if (subj.id === "history") counts[subj.id] = 8;
+        else if (subj.id === "polity") counts[subj.id] = 3;
+        else if (subj.id === "geography") counts[subj.id] = 3;
+        else counts[subj.id] = 0;
+      });
+
+      // 2. Fetch custom data from Supabase if online
+      let dbChapters: any[] = [];
+      if (isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabase
+            .from("admin_chapters_data")
+            .select("subject_id, chapter_id, data");
+          if (!error && data) {
+            dbChapters = data;
+          }
+        } catch (err) {
+          console.error("Failed to fetch admin chapters from Supabase for stats:", err);
+        }
+      }
+
+      // Map of subjectId_chapterId -> question count
+      const dbCountsMap = new Map<string, number>();
+      dbChapters.forEach((row) => {
+        const qList = row.data?.questions;
+        if (Array.isArray(qList)) {
+          dbCountsMap.set(`${row.subject_id}_${row.chapter_id}`, qList.length);
+        }
+      });
+
+      // 3. For each subject, aggregate dynamic counts (Supabase custom vs Local JSON files)
+      for (const subj of subjects) {
+        let subjectTotal = 0;
+        for (const chapter of subj.chapters) {
+          const dbKey = `${subj.id}_${chapter.id}`;
+          if (dbCountsMap.has(dbKey)) {
+            subjectTotal += dbCountsMap.get(dbKey) || 0;
+          } else {
+            // Fetch local JSON to get the actual fallback count
+            try {
+              const pathsToTry = [
+                `/data/${subj.folder}/${chapter.file}`,
+                `/data/${subj.folder?.toLowerCase()}/${chapter.file}`,
+                `/data/${subj.folder ? (subj.folder.charAt(0).toUpperCase() + subj.folder.slice(1).toLowerCase()) : ""}/${chapter.file}`,
+                `/data/${subj.id}/${chapter.file}`,
+                `/data/${subj.id?.toLowerCase()}/${chapter.file}`,
+                `/data/${subj.id ? (subj.id.charAt(0).toUpperCase() + subj.id.slice(1).toLowerCase()) : ""}/${chapter.file}`
+              ].filter(Boolean);
+
+              const uniquePaths = Array.from(new Set(pathsToTry));
+              let localData: any = null;
+              for (const path of uniquePaths) {
+                try {
+                  const res = await fetch(path);
+                  if (res.ok) {
+                    localData = await res.json();
+                    break;
+                  }
+                } catch (e) {}
+              }
+
+              if (localData && Array.isArray(localData.questions)) {
+                subjectTotal += localData.questions.length;
+              } else {
+                // Individual fallback matching
+                if (subj.id === "history") {
+                  if (chapter.id === "chapter01") subjectTotal += 5;
+                  else if (chapter.id === "chapter02") subjectTotal += 3;
+                } else if (subj.id === "polity" || subj.id === "geography") {
+                  subjectTotal += 3;
+                }
+              }
+            } catch (err) {
+              console.error(`Error loading local fallback count for ${subj.id}_${chapter.id}:`, err);
+            }
+          }
+        }
+        counts[subj.id] = subjectTotal;
+      }
+
+      if (active) {
+        setDynamicQuestionCounts(counts);
+      }
+    };
+
+    loadCounts();
+    return () => {
+      active = false;
+    };
+  }, [subjects]);
+
   // Compute subject-wise statistics
   const subjectStats = useMemo(() => {
     const stats: Record<string, {
@@ -21,15 +123,8 @@ export default function SubjectsView({ subjects, history, theme, onSelectSubject
     }> = {};
 
     subjects.forEach((subj) => {
-      // Find all chapters for this subject
-      const chapterIds = subj.chapters.map((ch) => ch.id);
-      
-      // Calculate total questions count. In our demo setup:
-      // history has chapter01 (5 Qs) and chapter02 (3 Qs). polity has 3 Qs. geography has 3 Qs.
-      let qCount = 0;
-      if (subj.id === "history") qCount = 8;
-      else if (subj.id === "polity") qCount = 3;
-      else if (subj.id === "geography") qCount = 3;
+      const chapterIds = new Set(subj.chapters.map((ch) => ch.id));
+      const qCount = dynamicQuestionCounts[subj.id] !== undefined ? dynamicQuestionCounts[subj.id] : (subj.id === "history" ? 8 : 3);
 
       // Completed chapters from history
       const uniqueCompletedChapters = new Set<string>();
@@ -37,7 +132,9 @@ export default function SubjectsView({ subjects, history, theme, onSelectSubject
 
       history.forEach((h) => {
         if (h.subjectId === subj.id) {
-          uniqueCompletedChapters.add(h.chapterId);
+          if (chapterIds.has(h.chapterId)) {
+            uniqueCompletedChapters.add(h.chapterId);
+          }
           const scorePercent = h.maxScore > 0 ? (h.score / h.maxScore) * 100 : 0;
           if (scorePercent > bestScore) {
             bestScore = scorePercent;
@@ -53,7 +150,7 @@ export default function SubjectsView({ subjects, history, theme, onSelectSubject
     });
 
     return stats;
-  }, [subjects, history]);
+  }, [subjects, history, dynamicQuestionCounts]);
 
   return (
     <div className="space-y-6" id="subjects-container">

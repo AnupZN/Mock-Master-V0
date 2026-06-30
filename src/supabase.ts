@@ -451,9 +451,11 @@ export async function saveAdminManifest(manifestData: any): Promise<void> {
       });
 
     if (error) throw error;
-  } catch (error) {
-    console.error("Supabase error saving admin manifest:", error);
-    throw error;
+  } catch (error: any) {
+    const errMsg = error?.message || error?.details || JSON.stringify(error) || String(error);
+    const fullErr = `Supabase error saving admin manifest: ${errMsg}${error?.code ? ` (Code: ${error.code})` : ""}${error?.hint ? ` - Hint: ${error.hint}` : ""}`;
+    console.error(fullErr, error);
+    throw new Error(fullErr);
   }
 }
 
@@ -489,9 +491,11 @@ export async function saveAdminChapterData(subjectId: string, chapterId: string,
       });
 
     if (error) throw error;
-  } catch (error) {
-    console.error("Supabase error saving admin chapter data:", error);
-    throw error;
+  } catch (error: any) {
+    const errMsg = error?.message || error?.details || JSON.stringify(error) || String(error);
+    const fullErr = `Supabase error saving admin chapter data: ${errMsg}${error?.code ? ` (Code: ${error.code})` : ""}${error?.hint ? ` - Hint: ${error.hint}` : ""}`;
+    console.error(fullErr, error);
+    throw new Error(fullErr);
   }
 }
 
