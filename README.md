@@ -16,6 +16,7 @@ We have rolled out several critical stability updates to ensure smooth operation
    - Attempts multiple prospective paths for both local and cloud JSON matching (e.g., lowercase folder, title-case folder, subject ID matching).
    - Gracefully falls back between Supabase table data and static asset endpoints.
 3. **Stale-While-Revalidate Caching**: Caches core application shells and static files, serving them instantaneously for a fast offline-ready experience, while checking for updates in the background.
+4. **Focused Native Authentication UI**: Refined the login experience to a lightweight, distraction-free single-card layout. Streamlined the flow by using native email and password authentication with Supabase, optimizing load times, and eliminating complex external OAuth setups.
 
 ---
 

@@ -105,6 +105,7 @@ export default function App() {
 
   // Supabase Auth & Sync states
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   // Supabase Auth modal states
@@ -374,6 +375,7 @@ export default function App() {
           console.error("Error syncing custom questions with Supabase:", err);
         } finally {
           setIsSyncing(false);
+          setAuthChecking(false);
         }
       } else {
         // Logged out: reset to local storage
@@ -383,6 +385,7 @@ export default function App() {
         setWrongQuestions(getWrongQuestions());
         setCustomQuestions({});
         setIsSyncing(false);
+        setAuthChecking(false);
       }
     });
 
@@ -1112,6 +1115,172 @@ export default function App() {
   };
 
   const resolvedUserName = currentUser ? (currentUser.displayName || settings.userName || "User") : "Guest";
+
+  if (authChecking) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950 space-y-4">
+        <div className="w-10 h-10 border-4 border-slate-200 dark:border-slate-800 border-t-indigo-600 rounded-full animate-spin"></div>
+        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Verifying secure connection...</p>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 md:p-8 font-sans relative overflow-hidden transition-colors duration-300">
+        {/* Background ambient accents */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
+
+        {/* Top bar with Dark mode toggle */}
+        <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
+          <button
+            onClick={handleToggleDarkMode}
+            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-850 shadow-sm transition duration-150 cursor-pointer"
+            title="Toggle Theme"
+          >
+            {settings.isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </div>
+
+        {/* Simple Centered Container */}
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800/80 p-8 relative z-10 transition-all">
+          
+          {/* Logo / Branding */}
+          <div className="flex flex-col items-center mb-6">
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30 mb-3 shrink-0">
+              <BookOpen size={20} className="text-white" />
+            </div>
+            <span className="font-black text-lg tracking-wider text-slate-900 dark:text-slate-100">EXAM.PRO</span>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Master your exams with intelligent practice</p>
+          </div>
+
+          {/* Title Header */}
+          <div className="mb-5 text-center">
+            <h3 className="text-xl font-bold text-slate-950 dark:text-slate-50 tracking-tight">
+              {isSignUpMode ? "Create Your Account" : "Welcome Back"}
+            </h3>
+          </div>
+
+          {/* Error Alert Box */}
+          {authError && (
+            <div className="p-4 mb-4 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 text-xs rounded-xl border border-rose-100/60 dark:border-rose-900/30 whitespace-pre-line leading-relaxed flex flex-col gap-2">
+              <div className="font-bold flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
+                <span>⚠️ Authentication Error</span>
+              </div>
+              <div>{authError}</div>
+              {authError.toLowerCase().includes("invalid login credentials") && (
+                <div className="text-[11px] mt-1 text-slate-600 dark:text-slate-400 border-t border-rose-100/20 dark:border-rose-900/20 pt-2 space-y-1">
+                  <p>💡 <strong>New here?</strong> Click the <strong>Create Account</strong> tab below.</p>
+                </div>
+              )}
+              {authError.toLowerCase().includes("email not confirmed") && (
+                <div className="text-[11px] mt-1 text-slate-600 dark:text-slate-400 border-t border-rose-100/20 dark:border-rose-900/20 pt-2 space-y-1">
+                  <p>📧 Please check your inbox/spam folder for the verification link.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Login / Register Toggle Tabs */}
+          <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl mb-4">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUpMode(false);
+                setAuthError("");
+              }}
+              className={`flex-1 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                !isSignUpMode
+                  ? "bg-white dark:bg-slate-700 text-slate-950 dark:text-slate-50 shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUpMode(true);
+                setAuthError("");
+              }}
+              className={`flex-1 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                isSignUpMode
+                  ? "bg-white dark:bg-slate-700 text-slate-950 dark:text-slate-50 shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
+
+          {/* Submit Form */}
+          <form onSubmit={handleAuthSubmit} className="space-y-4">
+            {isSignUpMode && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 font-sans">
+                  Display Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. John Doe"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-all placeholder:text-slate-400 font-sans"
+                />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-400 font-sans">
+                Email Address
+              </label>
+              <input
+                type="email"
+                required
+                placeholder="name@example.com"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-all placeholder:text-slate-400 font-sans"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-400 font-sans">
+                Password
+              </label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                placeholder="Min. 6 characters"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-all placeholder:text-slate-400 font-sans"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={authLoading}
+              className={`w-full py-3 px-4 mt-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-lg shadow-indigo-600/10 transition duration-150 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {authLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <span>{isSignUpMode ? "Create Account" : "Sign In"}</span>
+              )}
+            </button>
+          </form>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
