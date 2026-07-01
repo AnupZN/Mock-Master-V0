@@ -126,19 +126,30 @@ export default function SubjectsView({ subjects, history, theme, onSelectSubject
       const chapterIds = new Set(subj.chapters.map((ch) => ch.id));
       const qCount = dynamicQuestionCounts[subj.id] !== undefined ? dynamicQuestionCounts[subj.id] : (subj.id === "history" ? 8 : 3);
 
-      // Completed chapters from history
+      // Completed chapters from history (requires score >= 90%)
       const uniqueCompletedChapters = new Set<string>();
       let bestScore = 0;
 
+      const bestScoresPerChapter: Record<string, number> = {};
+
       history.forEach((h) => {
         if (h.subjectId === subj.id) {
-          if (chapterIds.has(h.chapterId)) {
-            uniqueCompletedChapters.add(h.chapterId);
-          }
           const scorePercent = h.maxScore > 0 ? (h.score / h.maxScore) * 100 : 0;
           if (scorePercent > bestScore) {
             bestScore = scorePercent;
           }
+          if (chapterIds.has(h.chapterId)) {
+            const currentBest = bestScoresPerChapter[h.chapterId] || 0;
+            if (scorePercent > currentBest) {
+              bestScoresPerChapter[h.chapterId] = scorePercent;
+            }
+          }
+        }
+      });
+
+      Object.entries(bestScoresPerChapter).forEach(([chapId, score]) => {
+        if (Math.round(score) >= 90) {
+          uniqueCompletedChapters.add(chapId);
         }
       });
 

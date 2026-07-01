@@ -154,13 +154,14 @@ export default function ChaptersView({
     subject.chapters.forEach((ch) => {
       // Completed / Best Score
       const chAttempts = history.filter((h) => h.subjectId === subject.id && h.chapterId === ch.id);
-      const completed = chAttempts.length > 0;
       let bestScore = 0;
 
       chAttempts.forEach((h) => {
         const pct = h.maxScore > 0 ? (h.score / h.maxScore) * 100 : 0;
         if (pct > bestScore) bestScore = pct;
       });
+
+      const completed = Math.round(bestScore) >= 90;
 
       // Filter wrongs specific to this chapter
       const wrongs = wrongQuestions.filter((w) => w.subjectId === subject.id && w.chapterId === ch.id);
@@ -267,7 +268,7 @@ export default function ChaptersView({
                         {stats.completed && (
                           <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 py-1 px-2.5 rounded-full uppercase tracking-wider">
                             <CheckCircle size={10} />
-                            <span>Attempted</span>
+                            <span>Completed</span>
                           </span>
                         )}
                         <span className={`text-[10px] font-extrabold py-1 px-2.5 rounded-full uppercase tracking-wider ${
@@ -349,7 +350,7 @@ export default function ChaptersView({
                           ? `bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:${themeClass.lightBg} hover:${themeClass.primaryText} border-slate-200 dark:border-slate-800/60 cursor-pointer`
                           : "bg-slate-50 dark:bg-slate-800/20 text-slate-400 border-slate-200 dark:border-slate-800/20 cursor-not-allowed opacity-50"
                       }`}
-                      title={!stats.completed ? "Unlock Quick Study by completing the test at least once" : "Quick Revision Mode"}
+                      title={!stats.completed ? "Unlock Quick Study by scoring 90% or more on this chapter's test" : "Quick Revision Mode"}
                     >
                       {stats.completed ? (
                         <BookOpenCheck size={13} />
