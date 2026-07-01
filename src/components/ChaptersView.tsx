@@ -169,16 +169,25 @@ export default function ChaptersView({
       // Bookmarks specific to this chapter
       const bmarks = bookmarks.filter((b) => b.subjectId === subject.id && b.chapterId === ch.id);
 
+      // Validate wrong and bookmarked questions exist in the actual questions list
+      const chData = chaptersData[ch.id];
+      const validWrongs = chData && chData.questions
+        ? wrongs.filter((w) => chData.questions.some((q) => q.id === w.questionId))
+        : wrongs;
+      const validBmarks = chData && chData.questions
+        ? bmarks.filter((b) => chData.questions.some((q) => q.id === b.questionId))
+        : bmarks;
+
       stats[ch.id] = {
         completed,
         bestScore: Math.round(bestScore),
-        wrongCount: wrongs.length,
-        bookmarkCount: bmarks.length,
+        wrongCount: chData && chData.questions ? validWrongs.length : wrongs.length,
+        bookmarkCount: chData && chData.questions ? validBmarks.length : bmarks.length,
       };
     });
 
     return stats;
-  }, [subject, history, bookmarks, wrongQuestions]);
+  }, [subject, history, bookmarks, wrongQuestions, chaptersData]);
 
   return (
     <div className="space-y-6" id="chapters-container">

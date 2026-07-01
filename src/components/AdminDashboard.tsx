@@ -18,6 +18,8 @@ import {
   Eye,
   Info,
   Upload,
+  Settings,
+  Clock,
   X
 } from "lucide-react";
 import { Subject, ChapterData, Question, Chapter, SubSubject } from "../types";
@@ -347,6 +349,12 @@ export default function AdminDashboard({
   const [chapTimePerQuestion, setChapTimePerQuestion] = useState(60);
   const [chapSubSubjectId, setChapSubSubjectId] = useState("");
 
+  // Chapter inline settings editing
+  const [showChapterSettings, setShowChapterSettings] = useState(false);
+  const [inlineTimePerQuestion, setInlineTimePerQuestion] = useState(60);
+  const [inlinePositiveMarks, setInlinePositiveMarks] = useState(2);
+  const [inlineNegativeMarks, setInlineNegativeMarks] = useState(0.66);
+
   // Sub-subject Management States
   const [showSubSubjectManager, setShowSubSubjectManager] = useState(false);
   const [newSubSubjectName, setNewSubSubjectName] = useState("");
@@ -477,6 +485,14 @@ export default function AdminDashboard({
 
     loadChapterQuestions();
   }, [selectedSubject, selectedChapter]);
+
+  useEffect(() => {
+    if (chapterData) {
+      setInlineTimePerQuestion(chapterData.timePerQuestion || 60);
+      setInlinePositiveMarks(chapterData.positiveMarks !== undefined ? chapterData.positiveMarks : 2);
+      setInlineNegativeMarks(chapterData.negativeMarks !== undefined ? chapterData.negativeMarks : 0.66);
+    }
+  }, [chapterData]);
 
   // Save Subject
   const handleSaveSubject = () => {
@@ -656,14 +672,42 @@ export default function AdminDashboard({
   };
 
   // Open Edit Chapter Modal
-  const handleOpenEditChapter = (chap: Chapter, e: React.MouseEvent) => {
+  const handleOpenEditChapter = async (chap: Chapter, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingChapter(chap);
     setChapId(chap.id);
     setChapTitle(chap.title);
     setChapFile(chap.file);
     setChapSubSubjectId(chap.subSubjectId || "");
-    setChapTimePerQuestion(chapterData?.timePerQuestion || 60);
+    
+    // Select the chapter so the active workspace pane loads it
+    setSelectedChapter(chap);
+
+    // Get time per question: if we're editing the currently loaded chapter, use chapterData's value.
+    if (selectedChapter?.id === chap.id && chapterData) {
+      setChapTimePerQuestion(chapterData.timePerQuestion || 60);
+    } else {
+      setChapTimePerQuestion(60); // temporary default
+      try {
+        if (selectedSubject) {
+          const dbData = await fetchAdminChapterData(selectedSubject.id, chap.id);
+          if (dbData) {
+            setChapTimePerQuestion(dbData.timePerQuestion || 60);
+          } else {
+            // Fallback to fetching from local JSON file
+            const path = `/data/${selectedSubject.folder}/${chap.file}`;
+            const res = await fetch(path);
+            if (res.ok) {
+              const loadedData = await res.json();
+              setChapTimePerQuestion(loadedData.timePerQuestion || 60);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch chapter data for timePerQuestion", err);
+      }
+    }
+
     setShowChapterModal(true);
   };
 
@@ -1186,6 +1230,17 @@ export default function AdminDashboard({
                 </div>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => setShowChapterSettings(!showChapterSettings)}
+                    className={`p-2.5 px-3 rounded-xl flex items-center gap-1.5 transition cursor-pointer shadow-sm border text-xs font-black ${
+                      showChapterSettings
+                        ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
+                        : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-755 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                    }`}
+                    title="Chapter Timing & Grading Settings"
+                  >
+                    <Settings size={14} /> Settings
+                  </button>
+                  <button
                     onClick={() => setShowBulkModal(true)}
                     className="p-2.5 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-755 text-slate-700 dark:text-slate-300 text-xs font-black rounded-xl flex items-center gap-1.5 transition cursor-pointer shadow-sm border border-slate-200 dark:border-slate-700"
                     title="Import multiple questions in bulk"
@@ -1200,6 +1255,88 @@ export default function AdminDashboard({
                   </button>
                 </div>
               </div>
+
+              {/* Inline Chapter Settings Edit Panel */}
+              {showChapterSettings && chapterData && (
+                <div className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80 rounded-2xl space-y-3 animation-fade-in">
+                  <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wider">
+                    <Settings size={12} className="text-indigo-500" /> Chapter Parameter Settings
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">
+                        Time Per Question (seconds)
+                      </label>
+                      <div className="relative">
+                        <Clock size={13} className="absolute left-3 top-3.5 text-slate-400 animate-pulse" />
+                        <input
+                          type="number"
+                          value={inlineTimePerQuestion}
+                          onChange={(e) => setInlineTimePerQuestion(Number(e.target.value))}
+                          className="w-full text-xs p-2.5 pl-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-extrabold focus:ring-2 focus:ring-indigo-500"
+                          placeholder="60"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">
+                        Positive Marks
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={inlinePositiveMarks}
+                        onChange={(e) => setInlinePositiveMarks(Number(e.target.value))}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                        placeholder="2"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">
+                        Negative Marks (absolute value)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={inlineNegativeMarks}
+                        onChange={(e) => setInlineNegativeMarks(Number(e.target.value))}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                        placeholder="0.66"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowChapterSettings(false);
+                      }}
+                      className="px-3 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChapterData({
+                          ...chapterData,
+                          timePerQuestion: inlineTimePerQuestion,
+                          positiveMarks: inlinePositiveMarks,
+                          negativeMarks: inlineNegativeMarks,
+                        });
+                        setShowChapterSettings(false);
+                        setStatusMessage({
+                          type: "success",
+                          text: `⚡ Parameters updated successfully! Set Time per Question to ${inlineTimePerQuestion}s. IMPORTANT: You must click the "Publish Changes to Supabase" button at the top-right to save permanently!`,
+                        });
+                      }}
+                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold rounded-lg transition shadow-sm"
+                    >
+                      Update Parameters
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Questions List */}
               {loadingChapter ? (

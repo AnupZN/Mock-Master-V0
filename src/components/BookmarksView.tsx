@@ -291,7 +291,7 @@ export default function BookmarksView({
       </div>
 
       {/* Statistics dashboard panel */}
-      {bookmarks.length > 0 && (
+      {bookmarkedQuestions.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4" id="bookmarks-quick-stats">
           {/* Stat 1 */}
           <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl flex items-center gap-4 shadow-sm">
@@ -300,7 +300,7 @@ export default function BookmarksView({
             </div>
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Bookmarks</p>
-              <h3 className="text-2xl font-black text-slate-800 dark:text-white">{bookmarks.length} Qs</h3>
+              <h3 className="text-2xl font-black text-slate-800 dark:text-white">{bookmarkedQuestions.length} Qs</h3>
             </div>
           </div>
 
@@ -374,7 +374,7 @@ export default function BookmarksView({
             }`}
           >
             <FileText size={16} />
-            <span>Browse All ({bookmarks.length})</span>
+            <span>Browse All ({bookmarkedQuestions.length})</span>
           </button>
 
           {/* Tab 3: Attempt as Test */}
@@ -398,7 +398,7 @@ export default function BookmarksView({
           <div className={`w-10 h-10 border-4 border-t-transparent ${themeClass.border} rounded-full animate-spin mx-auto`}></div>
           <p className="text-sm font-semibold text-slate-400">Loading your bookmark vault...</p>
         </div>
-      ) : bookmarks.length === 0 ? (
+      ) : bookmarkedQuestions.length === 0 ? (
         <div className="text-center py-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 shadow-sm">
           <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600 rounded-full flex items-center justify-center mx-auto">
             <Bookmark size={30} />
