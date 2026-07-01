@@ -46,8 +46,11 @@ export default function DashboardView({
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
   const [mixedQuestionCount, setMixedQuestionCount] = useState(15);
 
-  const openMixedModal = () => {
+  const openMixedModal = (count?: number) => {
     setSelectedSubjectIds(subjects.map((s) => s.id));
+    if (count) {
+      setMixedQuestionCount(count);
+    }
     setIsMixedModalOpen(true);
   };
 
@@ -344,21 +347,21 @@ export default function DashboardView({
           </div>
           <div className="grid grid-cols-3 gap-3">
             <button
-              onClick={() => onStartPractice("random_10")}
+              onClick={() => openMixedModal(10)}
               className={`flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 hover:${themeClass.lightBg} hover:${themeClass.border} rounded-2xl transition duration-150 cursor-pointer text-center`}
             >
               <span className={`text-2xl font-bold ${themeClass.primaryText}`}>10</span>
               <span className="text-xs font-semibold text-slate-500 mt-1">Random Qs</span>
             </button>
             <button
-              onClick={() => onStartPractice("random_25")}
+              onClick={() => openMixedModal(25)}
               className={`flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 hover:${themeClass.lightBg} hover:${themeClass.border} rounded-2xl transition duration-150 cursor-pointer text-center`}
             >
               <span className={`text-2xl font-bold ${themeClass.primaryText}`}>25</span>
               <span className="text-xs font-semibold text-slate-500 mt-1">Random Qs</span>
             </button>
             <button
-              onClick={() => onStartPractice("random_50")}
+              onClick={() => openMixedModal(50)}
               className={`flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 hover:${themeClass.lightBg} hover:${themeClass.border} rounded-2xl transition duration-150 cursor-pointer text-center`}
             >
               <span className={`text-2xl font-bold ${themeClass.primaryText}`}>50</span>
@@ -588,7 +591,7 @@ export default function DashboardView({
                 Question Count
               </label>
               <div className="grid grid-cols-5 gap-2">
-                {[10, 15, 20, 25, 30].map((num) => (
+                {[10, 15, 20, 25, 50].map((num) => (
                   <button
                     key={num}
                     type="button"

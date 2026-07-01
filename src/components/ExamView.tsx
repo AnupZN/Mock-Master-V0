@@ -758,7 +758,7 @@ export default function ExamView({
 
                     return (
                       <button
-                        key={q.id}
+                        key={`${q.subjectId || 'subj'}_${q.chapterId || 'chap'}_${q.id}`}
                         onClick={() => handleJumpToQuestion(i)}
                         className={`w-10 h-10 rounded-xl flex items-center justify-center font-mono text-xs font-black transition-all cursor-pointer ${btnBg} ${
                           isSelected ? `ring-4 ${themeClass.focusRing} scale-105` : ""
@@ -861,7 +861,7 @@ export default function ExamView({
 
                   return (
                     <button
-                      key={q.id}
+                      key={`${q.subjectId || 'subj'}_${q.chapterId || 'chap'}_${q.id}`}
                       onClick={() => handleJumpToQuestion(i)}
                       className={`w-9 h-9 rounded-lg flex items-center justify-center font-mono text-xs font-black transition-all cursor-pointer ${btnBg} ${
                         isSelected ? `ring-2 ${themeClass.focusRing} scale-105` : ""

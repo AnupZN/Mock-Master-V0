@@ -471,7 +471,7 @@ export default function ReviewView({
 
                   return (
                     <button
-                      key={q.id}
+                      key={`${q.subjectId || 'subj'}_${q.chapterId || 'chap'}_${q.id}`}
                       onClick={() => setCurrentIndex(i)}
                       className={`w-10 h-10 rounded-xl flex items-center justify-center font-mono text-xs font-black cursor-pointer transition-all ${indicatorBg} ${
                         isSelected ? `ring-2 ${themeClass.focusRing} scale-105` : ""

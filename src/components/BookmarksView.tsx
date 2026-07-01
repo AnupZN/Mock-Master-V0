@@ -658,7 +658,7 @@ export default function BookmarksView({
                     const originalIndexInStore = bookmarkedQuestions.findIndex((bq) => bq.question.id === item.question.id);
                     return (
                       <div
-                        key={`${item.question.id}_all`}
+                        key={`${item.subject.id}_${item.chapter.id}_${item.question.id}_all`}
                         className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm space-y-4"
                       >
                         {/* Top Subject context bar */}

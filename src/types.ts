@@ -17,6 +17,8 @@ export interface Question {
     headers: string[];
     rows: string[][];
   };
+  subjectId?: string;
+  chapterId?: string;
 }
 
 export interface SubSubject {

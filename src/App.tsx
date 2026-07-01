@@ -503,8 +503,14 @@ export default function App() {
     if (!subId || !chapId) {
       // Look up current question in loaded active session or context
       if (activeSession) {
-        subId = activeSession.subjectId;
-        chapId = activeSession.chapterId;
+        const foundQ = activeSession.questions.find((q) => q.id === questionId);
+        if (foundQ && foundQ.subjectId && foundQ.chapterId) {
+          subId = foundQ.subjectId;
+          chapId = foundQ.chapterId;
+        } else {
+          subId = activeSession.subjectId;
+          chapId = activeSession.chapterId;
+        }
       } else if (activeHistoryItem) {
         subId = activeHistoryItem.subjectId;
         chapId = activeHistoryItem.chapterId;
@@ -630,6 +636,12 @@ export default function App() {
     // Shuffle the questions order so that they appear in a unique sequence for each attempt
     testQuestions.sort(() => Math.random() - 0.5);
 
+    const questionsWithMeta = testQuestions.map((q) => ({
+      ...q,
+      subjectId: targetSubject.id,
+      chapterId: chapterId,
+    }));
+
     const totalSeconds = testQuestions.length * chapterData.timePerQuestion;
 
     const session: ExamSession = {
@@ -637,7 +649,7 @@ export default function App() {
       chapterId: chapterId,
       subjectName: targetSubject.name,
       chapterTitle: chapterData.chapter,
-      questions: testQuestions,
+      questions: questionsWithMeta,
       userAnswers: {},
       markedForReview: {},
       visitedQuestions: {},
@@ -683,14 +695,22 @@ export default function App() {
         const count = type === "random_10" ? 10 : type === "random_25" ? 25 : 50;
         // Shuffle and slice
         const shuffled = [...allQs].sort(() => 0.5 - Math.random());
-        practiceQs = shuffled.slice(0, count).map((item) => item.question);
+        practiceQs = shuffled.slice(0, count).map((item) => ({
+          ...item.question,
+          subjectId: item.subject.id,
+          chapterId: item.chapter.id,
+        }));
         chapterTitle = `Random ${count} practice`;
       } else if (type === "wrong_questions") {
         const wrongSet = new Set(wrongQuestions.map((w) => `${w.subjectId}_${w.chapterId}_${w.questionId}`));
         const filtered = allQs.filter((item) =>
           wrongSet.has(`${item.subject.id}_${item.chapter.id}_${item.question.id}`)
         );
-        practiceQs = filtered.map((item) => item.question);
+        practiceQs = filtered.map((item) => ({
+          ...item.question,
+          subjectId: item.subject.id,
+          chapterId: item.chapter.id,
+        }));
         chapterTitle = "Incorrect Questions Practice";
         if (practiceQs.length === 0) {
           alert("You don't have any incorrect questions in your history to practice!");
@@ -702,7 +722,11 @@ export default function App() {
         const filtered = allQs.filter((item) =>
           bmarkSet.has(`${item.subject.id}_${item.chapter.id}_${item.question.id}`)
         );
-        practiceQs = filtered.map((item) => item.question);
+        practiceQs = filtered.map((item) => ({
+          ...item.question,
+          subjectId: item.subject.id,
+          chapterId: item.chapter.id,
+        }));
         chapterTitle = "Bookmarked Practice";
         if (practiceQs.length === 0) {
           alert("You don't have any bookmarked questions to practice yet!");
@@ -712,7 +736,11 @@ export default function App() {
       } else if (type === "mixed") {
         const shuffled = [...allQs].sort(() => 0.5 - Math.random());
         const count = questionCount || 15;
-        practiceQs = shuffled.slice(0, count).map((item) => item.question);
+        practiceQs = shuffled.slice(0, count).map((item) => ({
+          ...item.question,
+          subjectId: item.subject.id,
+          chapterId: item.chapter.id,
+        }));
         
         if (selectedSubjectIds && selectedSubjectIds.length > 0) {
           const names = subjectsToLoad.map(s => s.name);
